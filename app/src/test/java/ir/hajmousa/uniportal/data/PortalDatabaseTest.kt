@@ -25,6 +25,7 @@ class PortalDatabaseTest {
     }
 
     private fun open() = Room.databaseBuilder(context, PortalDatabase::class.java, "course-test.db")
+        .addMigrations(PortalDatabase.MIGRATION_1_2)
         .allowMainThreadQueries().build()
 
     @After
@@ -74,5 +75,62 @@ class PortalDatabaseTest {
         val page = db.courseDao().readPage("moodle")!!
         assertEquals(listOf(old), page.courses)
         assertEquals(1L, page.lastSuccessEpochSeconds)
+    }
+
+    @Test
+    fun `agenda snapshot survives reopening and account clearing removes every section`() {
+        val item = AgendaItem("moodle", "1", "Sample deadline", 1700006400, AgendaItem.Kind.DEADLINE)
+        db.courseDao().replacePage("moodle", listOf(old), 1)
+        db.agendaDao().replacePreview("moodle", listOf(item), 2)
+        db.agendaDao().recordFailure("moodle", Reason.SERVER_ERROR)
+        db.agendaDao().replacePreview("other", emptyList(), 3)
+        db.close()
+        db = open()
+        val preview = db.agendaDao().readPreview("moodle")!!
+        assertEquals(listOf(item), preview.items)
+        assertEquals(2L, preview.lastSuccessEpochSeconds)
+        assertEquals(Reason.SERVER_ERROR, preview.lastError)
+        db.courseDao().clearPage("moodle")
+        assertNull(db.agendaDao().readPreview("moodle"))
+        assertTrue(db.agendaDao().items("moodle").isEmpty())
+        assertNull(db.courseDao().readPage("moodle"))
+        assertNotNull(db.agendaDao().readPreview("other"))
+    }
+
+    @Test
+    fun `agenda metadata failure rolls back replacement and retains the previous preview`() {
+        val item = AgendaItem("moodle", "1", "Sample deadline", 1700006400, AgendaItem.Kind.DEADLINE)
+        db.agendaDao().replacePreview("moodle", listOf(item), 1)
+        db.openHelper.writableDatabase.execSQL(
+            "CREATE TRIGGER fail_agenda_sync BEFORE INSERT ON sync_state BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END",
+        )
+        try {
+            db.agendaDao().replacePreview("moodle", emptyList(), 2)
+            fail("Expected transaction failure")
+        } catch (_: android.database.sqlite.SQLiteException) {
+            // Deleting the old rows must roll back with the failed metadata write.
+        }
+        assertEquals(listOf(item), db.agendaDao().readPreview("moodle")!!.items)
+        assertEquals(1L, db.agendaDao().readPreview("moodle")!!.lastSuccessEpochSeconds)
+    }
+
+    @Test
+    fun `version one migration preserves courses and metadata while adding usable agenda storage`() {
+        db.close()
+        context.deleteDatabase("course-test.db")
+        val file = context.getDatabasePath("course-test.db")
+        android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(file, null).use { legacy ->
+            legacy.execSQL("CREATE TABLE course (providerId TEXT NOT NULL, remoteId TEXT NOT NULL, name TEXT, shortName TEXT, position INTEGER NOT NULL, PRIMARY KEY(providerId, remoteId))")
+            legacy.execSQL("CREATE TABLE sync_state (providerId TEXT NOT NULL, section TEXT NOT NULL, lastSuccessEpochSeconds INTEGER, lastError TEXT, PRIMARY KEY(providerId, section))")
+            legacy.execSQL("INSERT INTO course VALUES ('moodle', '1', 'synthetic saved course', NULL, 0)")
+            legacy.execSQL("INSERT INTO sync_state VALUES ('moodle', 'courses_first_page', 123, NULL)")
+            legacy.version = 1
+        }
+        db = open()
+        assertEquals(listOf(old), db.courseDao().readPage("moodle")!!.courses)
+        assertEquals(123L, db.courseDao().readPage("moodle")!!.lastSuccessEpochSeconds)
+        assertNull(db.agendaDao().readPreview("moodle"))
+        db.agendaDao().replacePreview("moodle", emptyList(), 456)
+        assertTrue(db.agendaDao().readPreview("moodle")!!.items.isEmpty())
     }
 }

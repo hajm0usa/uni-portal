@@ -3,6 +3,7 @@ package ir.hajmousa.uniportal.data
 internal class MemoryCourseDao : CourseDao() {
     private val rows = mutableListOf<CourseEntity>()
     private val states = mutableMapOf<Pair<String, String>, SyncStateEntity>()
+    val agendaRows = mutableListOf<AgendaEntity>()
     var failStorage = false
 
     private fun checkStorage() { check(!failStorage) { "private-example-input" } }
@@ -17,6 +18,10 @@ internal class MemoryCourseDao : CourseDao() {
     override fun deleteCourses(providerId: String) {
         checkStorage()
         rows.removeAll { it.providerId == providerId }
+    }
+    override fun deleteAgenda(providerId: String) {
+        checkStorage()
+        agendaRows.removeAll { it.providerId == providerId }
     }
     override fun deleteSyncState(providerId: String, section: String) {
         checkStorage()

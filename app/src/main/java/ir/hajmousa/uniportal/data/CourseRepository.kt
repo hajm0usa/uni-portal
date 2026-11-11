@@ -65,8 +65,8 @@ class CourseRepository internal constructor(
         Result.failure(PortalException(PortalException.Reason.STORAGE_ERROR))
     }
 
-    private companion object {
-        // Serialize clearing with in-flight refreshes, even across recreated repository instances.
+    internal companion object {
+        // Serialize all section refreshes with account clearing, even across recreated instances.
         val cacheLock = Mutex()
     }
 }

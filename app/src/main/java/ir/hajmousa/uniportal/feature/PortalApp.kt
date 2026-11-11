@@ -19,7 +19,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,13 +43,17 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ir.hajmousa.uniportal.BuildConfig
 import ir.hajmousa.uniportal.R
 import ir.hajmousa.uniportal.core.AppLog
 import ir.hajmousa.uniportal.auth.SsoSession
 import ir.hajmousa.uniportal.core.PortalException
-import ir.hajmousa.uniportal.data.CourseRepository
+import ir.hajmousa.uniportal.data.createSyncCoordinator
+import ir.hajmousa.uniportal.data.SyncCoordinator
 import ir.hajmousa.uniportal.data.Course
 import ir.hajmousa.uniportal.data.CachedCoursePage
 import ir.hajmousa.uniportal.data.PortalDatabase
@@ -53,7 +64,17 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.awaitCancellation
 
+private enum class PortalTab(val title: Int, val icon: Int) {
+    TODAY(R.string.tab_today, R.drawable.nav_today),
+    COURSES(R.string.courses_title, R.drawable.nav_courses),
+    CALENDAR(R.string.tab_calendar, R.drawable.nav_calendar),
+    GRADES(R.string.tab_grades, R.drawable.nav_grades),
+    MESSAGES(R.string.tab_messages, R.drawable.nav_messages),
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PortalApp() {
     var showLogs by rememberSaveable { mutableStateOf(false) }
@@ -64,48 +85,68 @@ fun PortalApp() {
     var hasSavedCredentials by remember { mutableStateOf(false) }
     var credentialStorageError by remember { mutableStateOf(false) }
     var automaticLoginUsed by rememberSaveable { mutableStateOf(false) }
-    var startupSessionChecked by rememberSaveable { mutableStateOf(false) }
+    var signedOut by rememberSaveable { mutableStateOf(false) }
+    var tab by rememberSaveable { mutableStateOf(PortalTab.TODAY) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val session = remember(context) { SsoSession(context) }
-    val coursesViewModel = viewModel<CoursesViewModel> {
-        CoursesViewModel(CourseRepository(
+    val model = viewModel<PortalViewModel> {
+        PortalViewModel(createSyncCoordinator(
             session.cookieJar, "UniPortal/${BuildConfig.VERSION_NAME} (Android; read-only)",
-            PortalDatabase.get(context).courseDao(),
+            PortalDatabase.get(context),
         ))
     }
-    val coursesState by coursesViewModel.state.collectAsStateWithLifecycle()
-    val loading = coursesState.loading || coursesState.clearing
-    val needsLogin = coursesState.needsLogin
+    val state by model.state.collectAsStateWithLifecycle()
+    val coursesState = CoursesState(page = state.courses, loading = state.loading, clearing = state.clearing,
+        needsLogin = state.needsLogin, error = state.coursesError?.takeUnless { it == PortalException.Reason.SESSION_EXPIRED },
+        fromCache = state.courses != null && (state.coursesError != null || SyncCoordinator.isStale(state.courses?.lastSuccessEpochSeconds, state.nowEpoch)))
+    val loading = state.loading || state.clearing
+    val needsLogin = state.needsLogin
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycleState by lifecycle.currentStateFlow.collectAsState()
+    val foreground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
     LaunchedEffect(session) {
         val stored = withContext(Dispatchers.IO) { session.credentials.read().map { it != null } }
         hasSavedCredentials = stored.getOrDefault(false)
         credentialStorageError = stored.isFailure
-        val checkSession = hasSavedCredentials && !showLogin && !startupSessionChecked && !automaticLoginUsed && !signingOut
-        startupSessionChecked = true
-        if (checkSession) {
-            val restored = coursesViewModel.state.first { !it.loading && !it.clearing }
-            if (!restored.needsLogin) coursesViewModel.load()
+    }
+    LaunchedEffect(lifecycle, showLogin, showLogs, signingOut, signedOut) {
+        if (!showLogin && !showLogs && !signingOut && !signedOut) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                try {
+                    model.state.first { !it.loading && !it.clearing }
+                    model.refresh()
+                    awaitCancellation()
+                } finally { model.pauseRefresh() }
+            }
         }
     }
-    LaunchedEffect(needsLogin, hasSavedCredentials, loading, showLogin, signingOut, showLogs) {
-        if (needsLogin && hasSavedCredentials && !automaticLoginUsed && !loading && !showLogin && !signingOut && !showLogs) {
+    LaunchedEffect(needsLogin, hasSavedCredentials, loading, showLogin, signingOut, showLogs, foreground) {
+        if (foreground && needsLogin && hasSavedCredentials && !automaticLoginUsed && !loading && !showLogin && !signingOut && !showLogs) {
             automaticLoginUsed = true
-            coursesViewModel.clearForAccountChange {
+            model.clearForAccountChange {
                 signedIn = false
                 loginFailed = false
                 showLogin = true
             }
         }
     }
-    LaunchedEffect(coursesState) {
-        if (coursesState.page != null && !coursesState.fromCache && !loading && !signingOut) signedIn = true
+    LaunchedEffect(state) {
+        if (state.authenticated && !loading && !signingOut) signedIn = true
         if (needsLogin) signedIn = false
     }
     BackHandler(enabled = showLogs) { showLogs = false }
     BackHandler(enabled = showLogin) { showLogin = false }
 
-    Scaffold { padding ->
+    Scaffold(bottomBar = {
+        if (!showLogin && !showLogs) NavigationBar {
+            PortalTab.entries.forEach { item ->
+                NavigationBarItem(selected = tab == item, onClick = { tab = item },
+                    icon = { Icon(painterResource(item.icon), contentDescription = null) },
+                    label = { Text(stringResource(item.title)) })
+            }
+        }
+    }) { padding ->
         if (showLogs) {
             LogScreen(Modifier.padding(padding)) { showLogs = false }
         } else if (showLogin) {
@@ -119,11 +160,21 @@ fun PortalApp() {
                 showLogin = false
                 signedIn = success
                 loginFailed = !success
-                if (success) coursesViewModel.load()
+                if (success) {
+                    signedOut = false
+                    model.refresh(force = true)
+                }
             }
         } else {
+            val scroll = rememberScrollState()
+            LaunchedEffect(tab) { scroll.scrollTo(0) }
+            PullToRefreshBox(
+                isRefreshing = state.loading && !state.clearing,
+                onRefresh = { if (!signingOut && !loading && !needsLogin) model.refresh(force = true) },
+                modifier = Modifier.fillMaxSize().padding(padding),
+            ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
+                modifier = Modifier.fillMaxSize().verticalScroll(scroll).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 Text(
@@ -153,18 +204,20 @@ fun PortalApp() {
                             },
                         )
                         if (credentialStorageError) Text(stringResource(R.string.credentials_storage_error))
-                        if (signedIn || coursesState.page != null || hasSavedCredentials || credentialStorageError) {
+                        if (signedIn || coursesState.page != null || state.agenda != null || hasSavedCredentials || credentialStorageError) {
                             TextButton(enabled = !loading && !signingOut, onClick = {
                                 automaticLoginUsed = true
                                 scope.launch {
                                     // Finish local deletion even if the UI is recreated during logout.
                                     withContext(NonCancellable) {
                                         signingOut = true
+                                        signedOut = true
+                                        model.stopRefresh()
                                         val cleared = session.signOut()
                                         signedIn = false
                                         hasSavedCredentials = false
                                         credentialStorageError = !cleared
-                                        coursesViewModel.clearForAccountChange {}
+                                        model.clearForAccountChange {}
                                         signingOut = false
                                     }
                                 }
@@ -173,7 +226,7 @@ fun PortalApp() {
                         if (!signedIn || needsLogin) {
                             Button(enabled = !loading && !signingOut, onClick = {
                                 automaticLoginUsed = true
-                                coursesViewModel.clearForAccountChange {
+                                model.clearForAccountChange {
                                     signedIn = false
                                     loginFailed = false
                                     showLogin = true
@@ -182,7 +235,18 @@ fun PortalApp() {
                         }
                     }
                 }
-                CoursesContent(coursesState, enabled = !signingOut, onLoad = coursesViewModel::load)
+                when (tab) {
+                    PortalTab.COURSES -> CoursesContent(coursesState, enabled = !signingOut, onLoad = { model.refresh(force = true) })
+                    PortalTab.TODAY, PortalTab.CALENDAR -> AgendaContent(state, calendar = tab == PortalTab.CALENDAR,
+                        enabled = !signingOut, onRefresh = { model.refresh(force = true) })
+                    PortalTab.GRADES, PortalTab.MESSAGES -> Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(stringResource(tab.title), style = MaterialTheme.typography.titleLarge)
+                            Text(stringResource(R.string.coming_soon))
+                        }
+                    }
+                }
+            }
             }
         }
     }
@@ -221,6 +285,8 @@ private fun LogScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
                         AppLog.Event.SESSION_EXPIRED -> R.string.courses_needs_login
                         AppLog.Event.CACHE_STORAGE_FAILED -> R.string.courses_storage_error
                         AppLog.Event.CREDENTIAL_STORAGE_FAILED -> R.string.credentials_storage_error
+                        AppLog.Event.AGENDA_LOADED -> R.string.log_agenda_loaded
+                        AppLog.Event.AGENDA_LOAD_FAILED -> R.string.log_agenda_load_failed
                     }
                     Text(stringResource(label), style = MaterialTheme.typography.titleMedium)
                     entry.diagnostic?.let {
@@ -239,7 +305,7 @@ private fun CoursesContent(state: CoursesState, enabled: Boolean = true, onLoad:
         Text(stringResource(R.string.courses_first_page_note))
         if (!state.needsLogin) {
             Button(onClick = onLoad, enabled = enabled && !state.loading && !state.clearing) {
-                Text(stringResource(R.string.courses_load))
+                Text(stringResource(R.string.logs_refresh))
             }
         }
         if (state.loading || state.clearing) {

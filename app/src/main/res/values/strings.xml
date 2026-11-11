@@ -45,4 +45,19 @@
     <string name="credentials_edit">تغییر یا پاک کردن اطلاعات ورود</string>
     <string name="credentials_storage_error">خواندن، ذخیره یا پاک کردن اطلاعات ورود ناموفق بود. دوباره تلاش کنید.</string>
     <string name="credentials_automatic_hint">ورود خودکار فقط یک بار تلاش می‌شود. اگر انجام نشد یا سامانه درخواست تأیید کرد، از همین صفحه دستی وارد شوید یا اطلاعات ورود را تغییر دهید.</string>
+    <string name="tab_today">امروز</string>
+    <string name="tab_calendar">تقویم</string>
+    <string name="tab_grades">نمره‌ها</string>
+    <string name="tab_messages">پیام‌ها</string>
+    <string name="coming_soon">این بخش هنوز آماده نیست.</string>
+    <string name="agenda_preview_note">پیش‌نمایش حداکثر ۶ رویداد در بازهٔ هفت‌روزهٔ آخرین دریافت؛ این فهرست تقویم کامل نیست. رویدادهای آزمون هنوز تأیید نشده‌اند.</string>
+    <string name="agenda_empty_preview">در پیش‌نمایش ذخیره‌شده رویدادی برای نمایش وجود ندارد.</string>
+    <string name="agenda_empty_today">در این پیش‌نمایش رویدادی برای امروز ثبت نشده است.</string>
+    <string name="agenda_not_loaded">هنوز پیش‌نمایشی دریافت نشده است. وارد سامانه شوید و تازه‌سازی کنید.</string>
+    <string name="agenda_stale_days">آخرین دریافت %1$s روز پیش بوده است.</string>
+    <string name="agenda_server_error">دریافت رویدادها از سامانه ناموفق بود. دوباره تلاش کنید.</string>
+    <string name="agenda_deadline">مهلت تکلیف</string>
+    <string name="agenda_event">رویداد</string>
+    <string name="log_agenda_loaded">پیش‌نمایش رویدادها دریافت شد</string>
+    <string name="log_agenda_load_failed">دریافت پیش‌نمایش رویدادها ناموفق بود</string>
 </resources>

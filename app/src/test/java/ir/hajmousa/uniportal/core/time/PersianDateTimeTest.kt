@@ -13,6 +13,7 @@ class PersianDateTimeTest {
     @Test
     fun `Tehran midnight at Nowruz uses Jalali date and Persian digits`() {
         assertEquals("۱۴۰۳/۰۱/۰۱ ۰۰:۰۰", formatPersianDateTime(Instant.parse("2024-03-19T20:30:00Z").epochSecond))
+        assertEquals("۱۴۰۳/۰۱/۰۱", formatPersianDate(Instant.parse("2024-03-19T20:30:00Z").epochSecond))
     }
 
     @Test

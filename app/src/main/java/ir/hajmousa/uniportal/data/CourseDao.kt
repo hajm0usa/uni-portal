@@ -36,6 +36,9 @@ abstract class CourseDao {
     @Query("DELETE FROM course WHERE providerId = :providerId")
     abstract fun deleteCourses(providerId: String)
 
+    @Query("DELETE FROM agenda_item WHERE providerId = :providerId")
+    abstract fun deleteAgenda(providerId: String)
+
     @Query("DELETE FROM sync_state WHERE providerId = :providerId AND section = :section")
     abstract fun deleteSyncState(providerId: String, section: String)
 
@@ -75,6 +78,9 @@ abstract class CourseDao {
 
     @Transaction
     open fun clearPage(providerId: String) {
+        // This is the account-transition boundary: clear all cached sections in one transaction.
+        deleteAgenda(providerId)
+        deleteSyncState(providerId, AgendaDao.SECTION)
         deleteCourses(providerId)
         deleteSyncState(providerId, SECTION)
     }

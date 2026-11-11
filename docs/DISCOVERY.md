@@ -80,14 +80,28 @@ The owner fills this while developing, using the browser DevTools (F12). The age
 
 ## Calendar / action events (deadlines, exams)
 
-- Method(s): `TODO`
-- Request body: `TODO`
+- Method: `core_calendar_get_action_events_by_timesort` (owner-confirmed from the calendar/action-events Network request).
+- Observed request `args` (owner supplied):
+  ```json
+  {
+    "limitnum": 6,
+    "limittononsuspendedevents": true,
+    "timesortfrom": 1794342600,
+    "timesortto": 1794947400
+  }
+  ```
+  These are one captured request's values, not fixed app defaults. Time-boundary semantics and pagination/termination remain unverified. No `sesskey` value was retained.
+- Owner-supplied success response: one-item array with `error: false`, `data.events` (one event), numeric `data.firstid` and `data.lastid` matching that event's ID. No total/has-more field was present. A short response is not proof of completeness; how to request subsequent pages remains unknown.
+- Observed assignment deadline: `component: "mod_assign"`, `modulename: "assign"`, `eventtype: "due"`, with numeric `timestart`, `timesort`, `timeusermidnight`, `timemodified`, zero `timeduration`, boolean `overdue`, nested `course` and `action`, and a separate event `url`. `timestart` and `timesort` match in this sample only; do not assume they always match. Optional identity/group/category/repetition fields are null in this sample.
+- `formattedtime` contains server-rendered HTML; native UI should format epoch values itself. `editurl` contains sensitive sesskey material, deliberately replaced in the fixture. Edit/delete URLs and `action.url` (a submission entry point) do not authorize writes; use only a validated read-only event/activity URL for browser navigation. No original credential value or raw response was saved.
 - How exam times appear (event type / name): `TODO`
-- Fixture: `TODO`
+- Fixture: `app/src/test/resources/fixtures/moodle/calendar_ok.json` — sanitized real response; see the fixture README for replacements and limits. Assignment-deadline mapping into the shared `AgendaItem` model, preview HTTP/DataSource, cache repository, foreground sync and PortalViewModel logic are tested locally. Today/Calendar preview screens are wired but not yet compiled/device-verified. Room persistence/migration has isolated generated-code and SQLite checks; Android-backed tests remain pending. Real empty/error/HTML responses remain unavailable; clearly named synthetic cases exercise local parser failure paths.
+- App preview policy (not a discovered server guarantee): one request with `limitnum: 6` and `limittononsuspendedevents: true`, for today's start of day in `Asia/Tehran` through the start of day seven dates later. Dates are recomputed from an injected clock for each fetch; captured timestamps are not hardcoded. It shares the existing cookie jar, request pacing and one-refresh/one-retry session handling with courses. No guessed pagination arguments or completeness claim; inclusive/exclusive endpoint semantics and live calendar fetching still require verification.
 
 ## Assignments (if separate from calendar)
 
 - Method(s): `TODO`
+- Owner supplied a rendered assignment-detail HTML page (`body#page-mod-assign-view`), distinct from the calendar AJAX response. It contains localized open/due labels under `[data-region="activity-dates"]`, an intro attachment under `#intro`, and a submission-status table. This proves HTML content exists, not that no read-only AJAX alternative exists. The original page includes personal identifiers, submission filenames and sesskey-bearing links and was not saved locally. Assignment-detail parsing is deferred; Slice 2 deadlines use the confirmed calendar JSON. This page is not evidence for quiz/exam mapping.
 
 ## Course content (sections, modules, files)
 
