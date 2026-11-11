@@ -4,6 +4,7 @@
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_portal"
+        android:roundIcon="@drawable/ic_portal"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.UniPortal"
