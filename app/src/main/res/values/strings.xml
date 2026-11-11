@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">پرتال دانشگاه</string>
+    <string name="placeholder_title">همراه دانشگاه شما</string>
+    <string name="placeholder_body">نسخهٔ اولیه آماده است. ورود به سامانه و نمایش درس‌ها در مرحلهٔ بعد اضافه می‌شود.</string>
+    <string name="logs_title">گزارش‌های برنامه</string>
+    <string name="logs_open">نمایش گزارش‌های برنامه</string>
+    <string name="logs_back">بازگشت</string>
+    <string name="logs_refresh">تازه‌سازی</string>
+    <string name="logs_clear">پاک کردن گزارش‌ها</string>
+    <string name="logs_empty">گزارشی ثبت نشده است.</string>
+    <string name="logs_privacy">گزارش‌ها فقط در حافظه نگه داشته می‌شوند و با بسته شدن فرایند برنامه پاک می‌شوند. متن پیام‌ها، نشانی‌ها و اطلاعات ورود ثبت نمی‌شوند.</string>
+    <string name="log_app_started">برنامه باز شد</string>
+    <string name="log_screen_opened">صفحهٔ گزارش‌ها باز شد</string>
+</resources>

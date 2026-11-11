@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.UniPortal" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">@font/vazirmatn_regular</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>
