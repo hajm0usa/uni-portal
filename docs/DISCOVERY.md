@@ -17,11 +17,22 @@ The owner fills this while developing, using the browser DevTools (F12). The age
 ## SSO
 
 - Moodle base URL: `https://elearn.ut.ac.ir/` (confirmed by owner)
-- SSO host(s): `sso1.ut.ac.ir` (confirmed by owner; additional redirect hosts not yet checked)
-- Redirect chain after login (hosts only): `TODO`
+- SSO host(s): `sso1.ut.ac.ir` (confirmed by owner; only this SSO hostname appeared in the supplied document-request list, but completeness of the capture remains unverified).
+- Main-frame redirect chain after login (hosts only): exact sequence `TODO`. The owner confirmed that browser sign-in successfully reaches the course dashboard with `elearn.ut.ac.ir` in the address bar. The supplied Network Doc list ends in SSO but is not verified as a chronological main-frame redirect chain; it must not be treated as the final top-level navigation.
+- Observed document-request domains in the owner's supplied order (full hostnames confirmed by owner): `elearn.ut.ac.ir` -> `sso1.ut.ac.ir` -> `elearn.ut.ac.ir` -> `elearn.ut.ac.ir` -> `sso1.ut.ac.ir` -> `elearn.ut.ac.ir` -> `elearn.ut.ac.ir` -> `sso1.ut.ac.ir` -> `sso1.ut.ac.ir`. The owner confirmed that the abbreviated `eleaen` entry also meant `elearn.ut.ac.ir`. Document requests may include frames; this list alone does not establish top-level navigation order.
 - Login form: plain HTML `<form>` (confirmed by owner). Fields: `TODO`
-- After login the URL carries a one-time ticket (confirmed by owner): parameter name `TODO`
-- Cookies set on the SSO host (name, Expires column, HttpOnly/Secure): `TODO` (owner noted the Expires column says "Session")
+- Return credential parameter: `code`, observed in the actual Moodle callback Request URL supplied by the owner. The owner previously described the return credential as single-use; consumption/expiry behavior has not been independently tested. No credential values are retained here.
+- Query-parameter names on one inspected request to `sso1.ut.ac.ir` (hostname and names confirmed by owner; values omitted): `client_id`, `response_type`, `redirect_uri`, `state`, `scope`. The path and exact phase in the login flow remain unconfirmed. These names resemble an authorization request, but do not establish the protocol or identify the ticket returned to Moodle.
+- Callback target: `https://elearn.ut.ac.ir/admin/oauth2callback.php` — confirmed both by the requested `redirect_uri` and, subsequently, the owner's actual callback Request URL. The selected request's method was reported as `GET`. Actual callback query-parameter names: `code`, `scope`, `state`, `session_state`; values intentionally omitted. Browser sign-in reaches the Moodle dashboard, but callback HTTP status and app/WebView handling have not been tested.
+- The earlier reports of a queryless Moodle GET and repeated authorization-request parameter names were not tied to a verified callback URL; they must not override the later actual callback URL observation.
+- Callback privacy: `state` can contain an encoded URL with a nested `sesskey`. Treat the entire `state` value, `code` and `session_state` as sensitive. Do not log, copy into tracked fixtures, or retain their values (including percent-encoded forms); parameter names alone are sufficient for discovery.
+- Cookies set on the SSO host (name, Expires column, HttpOnly/Secure): `TODO` (owner previously noted the Expires column says "Session"). After sign-in, the owner reports that `sso1.ut.ac.ir` is not listed under Application Cookies; the `.ut.ac.ir` cookies they inspected are `__arcsjs` and `__arcsjsc`. These match the parent-domain cookies already observed on the Moodle page, but their purpose/origin and any SSO authentication cookies remain unverified. Parent-domain scope alone does not identify an authentication cookie.
+- Cookies observed on one `sso1.ut.ac.ir` Network request (names only, supplied by owner):
+  - Request Cookies: `__arcsjs`, `__arcsjsc`.
+  - Response Cookies: `.AspNetCore.Antiforgery.q2tjTUgKrLM`, `.AspNetCore.Mvc.CookieTempDataProvider`.
+  - The owner checked the other SSO responses in the same login capture and reported no additional response-cookie names. This is limited to that capture; it does not prove that no other SSO cookies exist or that either named cookie carries authenticated state.
+  - Attributes for both named response cookies (Domain, Path, Expires/Max-Age, HttpOnly and Secure): unknown; the owner could not provide them. The earlier general "Session" observation has not been tied to either cookie. Do not infer attributes from framework defaults.
+  - The original request's phase in the sign-in flow remains `TODO`. Which cookies, if any, carry authenticated SSO state remains unverified.
 - Cookies observed on the Moodle page (owner supplied; values intentionally omitted):
   - `MoodleSession`: domain `elearn.ut.ac.ir`, path `/`, expiry `Session`, HttpOnly unchecked, Secure checked (flags confirmed by owner).
   - `__arcsjs` and `__arcsjsc`: domain `.ut.ac.ir`, path `/`, explicit expiration (persistent cookies). Purpose and originating host are unverified.
@@ -51,7 +62,7 @@ The owner fills this while developing, using the browser DevTools (F12). The age
     "customfieldvalue": ""
   }
   ```
-- Full request batch envelope: `TODO`
+- Request batch envelope: an array containing exactly one object with only `index`, `methodname` and `args`; `index` is numeric `0` (all confirmed by owner from Payload). Method and arguments are recorded above.
 - Saved course-list response validated locally: a one-item array containing only boolean `error` (`false`) and `data`. The `data` object contains only `courses` (21 objects) and numeric `nextoffset` (`21`). Pagination/end-of-list semantics remain unverified; a short page alone is not proof of completion.
 - Observed course fields (structure/types only; real course names, identifiers and image content omitted):
   - Numbers: `id`, `startdate`, `enddate`, `progress`, `summaryformat`.
