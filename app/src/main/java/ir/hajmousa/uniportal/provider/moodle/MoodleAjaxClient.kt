@@ -3,6 +3,7 @@ package ir.hajmousa.uniportal.provider.moodle
 import ir.hajmousa.uniportal.auth.SsoHosts
 import ir.hajmousa.uniportal.core.PortalException
 import ir.hajmousa.uniportal.core.PortalException.Reason
+import ir.hajmousa.uniportal.data.AgendaItem
 import java.io.IOException
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
@@ -51,15 +52,26 @@ internal class MoodleAjaxClient(
         url.scheme == baseUrl.scheme && url.host == baseUrl.host && url.port == baseUrl.port &&
             url.username.isEmpty() && url.password.isEmpty()
 
-    fun fetchFirstCoursePage(): Result<CoursePage> {
+    fun fetchFirstCoursePage(): Result<CoursePage> = withSession { key ->
+        MoodleParsers.parseCoursePage(readAjax(key, COURSE_METHOD, COURSE_REQUEST))
+    }
+
+    fun fetchAgendaPreview(fromEpoch: Long, toEpoch: Long): Result<List<AgendaItem>> {
+        if (fromEpoch < 0 || toEpoch <= fromEpoch) return Result.failure(PortalException(Reason.PARSE_ERROR))
+        // shortcut: one observed six-event page, add pagination only after its protocol is verified.
+        val request = """[{"index":0,"methodname":"$CALENDAR_METHOD","args":{"limitnum":6,"limittononsuspendedevents":true,"timesortfrom":$fromEpoch,"timesortto":$toEpoch}}]"""
+        return withSession { key -> MoodleParsers.parseAgenda(readAjax(key, CALENDAR_METHOD, request)) }
+    }
+
+    private fun <T> withSession(fetch: (String) -> Result<T>): Result<T> {
         var acquired = false
         return try {
             gate.acquire()
             acquired = true
-            val first = fetchCourses(fetchSesskey())
+            val first = fetch(fetchSesskey())
             val reason = (first.exceptionOrNull() as? PortalException)?.reason
             val result = if (reason == Reason.INVALID_SESSION_KEY || reason == Reason.SESSION_EXPIRED) {
-                fetchCourses(fetchSesskey())
+                fetch(fetchSesskey())
             } else {
                 first
             }
@@ -86,15 +98,15 @@ internal class MoodleAjaxClient(
         read(Request.Builder().url(baseUrl).build(), json = false),
     ).getOrThrow()
 
-    private fun fetchCourses(sesskey: String): Result<CoursePage> {
+    private fun readAjax(sesskey: String, method: String, body: String): String {
         val url = baseUrl.newBuilder().encodedPath("/lib/ajax/service.php")
             .addQueryParameter("sesskey", sesskey)
-            .addQueryParameter("info", COURSE_METHOD)
+            .addQueryParameter("info", method)
             .build()
         val request = Request.Builder().url(url)
-            .post(COURSE_REQUEST.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()
-        return MoodleParsers.parseCoursePage(read(request, json = true))
+        return read(request, json = true)
     }
 
     private fun read(request: Request, json: Boolean): String {
@@ -129,6 +141,7 @@ internal class MoodleAjaxClient(
     private companion object {
         const val MAX_BODY_BYTES = 8L * 1024 * 1024
         const val COURSE_METHOD = "core_course_get_enrolled_courses_by_timeline_classification"
+        const val CALENDAR_METHOD = "core_calendar_get_action_events_by_timesort"
         // shortcut: fetch only the observed first page, add pagination after its termination rule is verified.
         const val COURSE_REQUEST = """[{"index":0,"methodname":"$COURSE_METHOD","args":{"offset":0,"limit":24,"classification":"all","sort":"ul.timeaccess desc","customfieldname":"","customfieldvalue":""}}]"""
     }

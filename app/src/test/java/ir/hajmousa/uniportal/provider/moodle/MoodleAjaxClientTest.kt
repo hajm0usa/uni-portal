@@ -88,6 +88,88 @@ class MoodleAjaxClientTest {
     }
 
     @Test
+    fun `calendar preview uses the observed read-only payload with caller supplied epochs`() {
+        enqueueConfig()
+        enqueueJson("calendar_ok.json")
+        val items = client.fetchAgendaPreview(1794342600, 1794947400).getOrThrow()
+        assertEquals(1, items.size)
+        val dashboard = server.takeRequest()
+        assertEquals("MoodleSession=XXXX", dashboard.headers["Cookie"])
+        val ajax = server.takeRequest()
+        assertEquals("POST", ajax.method)
+        assertEquals("/lib/ajax/service.php", ajax.url.encodedPath)
+        assertEquals("XXXX", ajax.url.queryParameter("sesskey"))
+        assertEquals("core_calendar_get_action_events_by_timesort", ajax.url.queryParameter("info"))
+        assertEquals("MoodleSession=XXXX", ajax.headers["Cookie"])
+        assertEquals(userAgent, ajax.headers["User-Agent"])
+        assertEquals(Json.parseToJsonElement(
+            """[{"index":0,"methodname":"core_calendar_get_action_events_by_timesort","args":{"limitnum":6,"limittononsuspendedevents":true,"timesortfrom":1794342600,"timesortto":1794947400}}]""",
+        ), Json.parseToJsonElement(ajax.body!!.utf8()))
+        assertEquals(2, server.requestCount)
+        assertTrue(AppLog.snapshot().isEmpty())
+    }
+
+    @Test
+    fun `invalid calendar ranges fail before contacting the server`() {
+        listOf(-1L to 100L, 100L to 100L, 101L to 100L).forEach { (from, to) ->
+            assertReason(Reason.PARSE_ERROR, client.fetchAgendaPreview(from, to))
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `calendar session errors refresh once and second failure requires login`() {
+        listOf("courses_invalid_sesskey_synthetic.json", "calendar_expired_session_synthetic.json").forEach { error ->
+            enqueueConfig()
+            enqueueJson(error)
+            enqueueConfig("NEXT")
+            enqueueJson("calendar_ok.json")
+            assertTrue(client.fetchAgendaPreview(100, 200).isSuccess)
+            assertEquals("GET", server.takeRequest().method)
+            assertEquals("XXXX", server.takeRequest().url.queryParameter("sesskey"))
+            assertEquals("GET", server.takeRequest().method)
+            assertEquals("NEXT", server.takeRequest().url.queryParameter("sesskey"))
+            repeat(2) { enqueueConfig(); enqueueJson(error) }
+            assertReason(Reason.SESSION_EXPIRED, client.fetchAgendaPreview(100, 200))
+            repeat(4) { server.takeRequest() }
+            assertNull(server.takeRequest(100, TimeUnit.MILLISECONDS))
+        }
+        assertEquals(16, server.requestCount)
+    }
+
+    @Test
+    fun `calendar synthetic empty and failure cases never trigger pagination or retry loops`() {
+        enqueueConfig()
+        enqueueJson("calendar_empty_synthetic.json")
+        assertTrue(client.fetchAgendaPreview(100, 200).getOrThrow().isEmpty())
+        repeat(2) { server.takeRequest() }
+        listOf(
+            MockResponse(headers = headersOf("Content-Type", "text/html"), body = fixture("calendar_login_page_synthetic.html")) to Reason.SESSION_EXPIRED,
+            MockResponse(headers = headersOf("Content-Type", "application/json"), body = fixture("calendar_error_object_synthetic.json")) to Reason.SERVER_ERROR,
+            MockResponse(headers = headersOf("Content-Type", "application/json"), body = "{private-example-input") to Reason.PARSE_ERROR,
+        ).forEach { (response, reason) ->
+            enqueueConfig()
+            server.enqueue(response)
+            assertReason(reason, client.fetchAgendaPreview(100, 200))
+            repeat(2) { server.takeRequest() }
+            assertNull(server.takeRequest(100, TimeUnit.MILLISECONDS))
+        }
+        assertEquals(8, server.requestCount)
+    }
+
+    @Test
+    fun `calendar redirect is blocked before forwarding credentials to another origin`() {
+        MockWebServer().use { other ->
+            other.start()
+            enqueueConfig()
+            server.enqueue(MockResponse(code = 307, headers = headersOf("Location", other.url("/capture").toString())))
+            assertReason(Reason.SESSION_EXPIRED, client.fetchAgendaPreview(100, 200))
+            assertEquals(2, server.requestCount)
+            assertEquals(0, other.requestCount)
+        }
+    }
+
+    @Test
     fun `invalidsesskey and servicerequireslogin refresh once then succeed`() {
         listOf("courses_invalid_sesskey_synthetic.json", "courses_expired_session_synthetic.json").forEach { error ->
             enqueueConfig()
