@@ -2,13 +2,15 @@
 
 Personal, read-only Android client for a Moodle-based university portal. Persian / RTL, Android 8+ (API 26). See [PLAN.md](PLAN.md) for the slice boundaries and [AGENTS.md](AGENTS.md) for the project rules.
 
-## Current scope: Slice 0
+## Current scope: Slice 1 started — parser foundation
 
 - Compose placeholder screen; teal light/dark fallback and wallpaper colors on Android 12+.
 - Bundled Vazirmatn font, including its SIL Open Font License in APK assets.
 - **Long-press the app title** to open local diagnostics. Use the refresh/clear buttons; system Back returns to the placeholder.
 - Logs are a 200-entry, process-memory-only buffer. Only fixed event IDs and exception class/stack frames are accepted; exception messages, causes and suppressed exceptions are not recorded. No logcat or disk logging.
-- No network permission, sign-in, cached university data or parsers yet. Those start in Slice 1, after the owner confirms Slice 0.
+- Slice 0 is owner-confirmed complete. The installed UI is still its placeholder; no sign-in screen, network permission or university cache has been added yet.
+- Slice 1 now has a tolerant course-page parser, shared course models and a sesskey extractor, tested against the owner's real sanitized samples. Parse errors return fixed typed reasons without retaining response text or exception causes. DTOs stay inside the Moodle provider.
+- Error/empty/HTML fixtures are explicitly **synthetic**, not confirmed server responses. Pagination termination, HTTP retries, encrypted cookies, WebView login, Room and course UI remain pending.
 
 Production application ID: `ir.hajmousa.uniportal`; debug: `ir.hajmousa.uniportal.debug`.
 
@@ -47,8 +49,9 @@ Versions were checked on 2026-11-11, adding only dependencies needed for this sl
 - Gradle `9.9.1`: [official release metadata](https://services.gradle.org/versions/current); wrapper JAR checked against its official SHA-256.
 - API 37: [Google's current Compose sample configuration](https://github.com/android/compose-samples/blob/main/scripts/libs.versions.toml).
 - JUnit `4.13.2`: [Maven Central metadata](https://repo.maven.apache.org/maven2/junit/junit/maven-metadata.xml).
+- kotlinx.serialization JSON `1.12.0`: [Maven Central metadata](https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-serialization-json/maven-metadata.xml) and [official release notes](https://github.com/Kotlin/kotlinx.serialization/releases/tag/v1.12.0), checked before adding it for Slice 1. The release targets Kotlin 2.4.10 and is used with the project's Kotlin/compiler plugin 2.4.21.
 - Vazirmatn regular/bold, unmodified, from [upstream v33.003](https://github.com/rastikerdar/vazirmatn/tree/v33.003), license in `app/src/main/assets/licenses/vazirmatn-OFL.txt`.
 
-Verified here: the checksum-validated Gradle wrapper runs, Android XML and the version catalog parse, all six JVM unit tests (four AppLog and two fixture-privacy checks) pass using the Kotlin compiler directly (no Android SDK needed), and workflow YAML/shell syntax, release tag validation and update metadata self-checks pass. The owner-supplied course response and M.cfg assignment have sanitized fixtures with locally checked structure/types and privacy; parser implementation remains pending. `./gradlew testDebugUnitTest assembleDebug` was attempted but stopped at Android Gradle plugin resolution against Google's repository; no APK was produced. There is also no local Android SDK.
+Verified here: all **18 JVM tests** pass (four AppLog, two fixture privacy, twelve parsers), compiled directly with Kotlin 2.4.21 and its serialization compiler plugin against JSON runtime 1.12.0. This validates the new pure Kotlin source/generated serializers, not the Android Gradle build. The wrapper, XML/catalog and workflow self-checks previously passed. The latest `./gradlew testDebugUnitTest assembleDebug` attempt still stops at Android Gradle plugin resolution against Google's repository; no new local APK was produced, and there is no local Android SDK.
 
-The owner confirms GitHub Actions succeeds, the APK installs, Persian RTL works and hidden logs open: Slice 0 is complete. The run/artifact and phone behavior have not been independently inspected; release signing remains unverified. Site facts recorded in `docs/DISCOVERY.md` come from the owner's browser observations and saved response, not inferred Moodle behavior or app/network tests.
+The owner confirms GitHub Actions succeeds, the APK installs, Persian RTL works and hidden logs open for **Slice 0**. The new serialization/Gradle changes need another CI build; Slice 1 network behavior and release signing are not verified. The run/artifact and phone behavior have not been independently inspected. Site facts recorded in `docs/DISCOVERY.md` come from the owner's browser observations and saved responses, not inferred Moodle behavior or app/network tests.

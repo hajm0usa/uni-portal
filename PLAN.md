@@ -35,17 +35,22 @@ Assumptions to verify:
 4. After the session expires, the re-login flow works.
 
 - [ ] [owner] Fill the "SSO" and "Course list" sections of `docs/DISCOVERY.md` (hosts, cookie names, the exact AJAX method for the course list, sanitized sample response).
-  - Discovery in progress: owner-confirmed hosts, Moodle cookie attributes, SSO cookie-name observations, callback path/query-parameter names, sesskey presence/syntax in `M.cfg`, course-list method/arguments/batch envelope and sanitized real course/config fixtures are recorded. SSO cookie attributes/authentication role, exact main-frame redirect chain and error fixtures remain unverified. This does not waive Slice 0's verification gate.
-  - Fixture JSON/structure/sanitization checks and all six JVM unit tests pass locally (four AppLog, two fixture privacy). The course parser and Android/network verification remain pending.
+  - Discovery in progress: owner-confirmed hosts, Moodle cookie attributes, SSO cookie-name observations, callback path/query-parameter names, sesskey presence/syntax in `M.cfg`, course-list method/arguments/batch envelope and sanitized real course/config fixtures are recorded. SSO cookie attributes/authentication role, exact main-frame redirect chain, pagination termination and real error fixtures remain unverified. Slice 0 is owner-confirmed complete.
+  - Fixture JSON/structure/sanitization checks and all 18 JVM unit tests pass locally (four AppLog, two fixture privacy, twelve parser tests). Parser tests use real sanitized success/config fixtures and clearly labeled synthetic error cases. No live network behavior is verified by these tests.
 - [ ] [agent] `SsoSession` + WebView login screen restricted to the university and SSO hosts (external links open in the system browser; no `addJavascriptInterface`).
 - [ ] [agent] `PersistentCookieJar` keyed by host, AES-GCM with Keystore key.
 - [ ] [agent] `sesskey` extractor (regex on `M.cfg`) + `MoodleAjaxClient` with interceptors: honest User-Agent, rate limit, session-expiry detection.
+  - [x] Pure `M.cfg` sesskey extraction, balanced JSON-string-aware object scanning and typed input-safe failures, tested against the real sanitized config fragment. HTTP client/retry and live extraction remain pending.
 - [ ] [agent] One real `DataSource`: course list -> Room (with `providerId`) -> a plain list screen.
+  - [x] Shared `Course` model with `providerId` and remote ID; tolerant course-page DTO/parser tested against the real sanitized response. `nextoffset` is retained without inventing end-of-pagination semantics. DataSource, Room and UI are not wired yet.
 - [ ] [agent] `NeedsLogin` state and re-login flow.
 - [ ] [agent] Parser tests with fixtures, including expired session, malformed JSON, HTML instead of JSON.
+  - Local parser coverage implemented; missing real error/empty/HTML responses are represented only by explicitly synthetic fixtures. HTTP/redirect/retry tests and real-device verification remain pending.
 - [ ] [owner] Test on a real phone; report which of the four assumptions held, with the in-app log.
 
 Done when: sign in, see the real course list, kill the session on the server side (or wait), see the app move to `NeedsLogin`, sign in again, list reloads. Findings written to `docs/DISCOVERY.md`.
+
+**Status:** Slice 1 started with the fixture-backed parser foundation only. The installed UI is still the Slice 0 placeholder; there are no live requests or university caches yet. Latest local Android build attempt remains blocked resolving AGP from Google's repository. The changed Gradle/serialization setup needs a new CI run; the owner's prior CI/phone acceptance applies to Slice 0, not this change. Slice 1 is not complete.
 
 ---
 

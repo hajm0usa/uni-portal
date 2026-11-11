@@ -37,7 +37,7 @@ The owner fills this while developing, using the browser DevTools (F12). The age
   - `MoodleSession`: domain `elearn.ut.ac.ir`, path `/`, expiry `Session`, HttpOnly unchecked, Secure checked (flags confirmed by owner).
   - `__arcsjs` and `__arcsjsc`: domain `.ut.ac.ir`, path `/`, explicit expiration (persistent cookies). Purpose and originating host are unverified.
   - HttpOnly / Secure flags for `__arcsjs` and `__arcsjsc`: `TODO` (supplied rows had no headers).
-- Where `sesskey` appears in the HTML: inside the `M.cfg` block of the logged-in dashboard page source (confirmed by owner). The owner's saved assignment was validated locally: `M.cfg` is assigned a JSON-compatible object with a nonempty, double-quoted string `sesskey` field and a semicolon terminator. App extraction remains unverified; no original sesskey value has been recorded in tracked files.
+- Where `sesskey` appears in the HTML: inside the `M.cfg` block of the logged-in dashboard page source (confirmed by owner). The owner's saved assignment was validated locally: `M.cfg` is assigned a JSON-compatible object with a nonempty, double-quoted string `sesskey` field and a semicolon terminator. The pure extractor now passes tests against the sanitized fragment; live WebView/OkHttp fetching and extraction remain unverified. No original sesskey value has been recorded in tracked files.
 - Config fixture: `app/src/test/resources/fixtures/moodle/moodle_config_ok.html` — sanitized real assignment with an explicitly added script wrapper (not a complete captured HTML page). Original assignment syntax, keys, nesting and types are preserved; nonempty strings are `XXXX`, numbers are zero. Session-timeout fields exist as strings in the sample, but their original values are not retained and actual session lifetime remains untested.
 
 ## Session lifetime tests
@@ -69,7 +69,7 @@ The owner fills this while developing, using the browser DevTools (F12). The age
   - Strings: `fullname`, `shortname`, `idnumber`, `fullnamedisplay`, `coursecategory`, `courseimage`, `pdfexportfont`, `summary`, `viewurl`.
   - Booleans: `hasprogress`, `hidden`, `isfavourite`, `showactivitydates`, `showcompletionconditions`, `showshortname`, `visible`.
   - The earlier Preview image was truncated; the saved response is complete. Original images have not been decoded or copied into the sanitized fixture.
-- Fixture: `app/src/test/resources/fixtures/moodle/courses_ok.json` — sanitized from the owner's complete saved response; preserves all 21 course objects and field types. Names, identifiers, dates, links and images are sample replacements, and progress/favourites are neutralized. See the adjacent fixture README for provenance. JSON/structure/privacy checks passed locally; Kotlin parser tests are still pending.
+- Fixture: `app/src/test/resources/fixtures/moodle/courses_ok.json` — sanitized from the owner's complete saved response; preserves all 21 course objects and field types. Names, identifiers, dates, links and images are sample replacements, and progress/favourites are neutralized. See the adjacent fixture README for provenance. JSON/structure/privacy checks and Kotlin course-page parser tests pass locally; the DataSource/network/cache/UI path is not implemented yet.
 
 ## Calendar / action events (deadlines, exams)
 

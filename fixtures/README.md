@@ -7,10 +7,10 @@ Real responses from the site, used to test parsers. They live in `app/src/test/r
 Before a response becomes a fixture:
 
 - [ ] Remove or replace: names, emails, student numbers, phone numbers, profile image URLs with tokens, message bodies.
-- [ ] Replace `sesskey`, tokens, cookie values, `token=` / `ticket=` URL parameters with `XXXX`.
+- [ ] Replace `sesskey`, tokens, cookie values, authorization `code`, `state`, and `session_state` values with `XXXX`, including percent-encoded URL parameters. Redact the entire `state` value: it can contain an encoded URL with a nested `sesskey`.
 - [ ] Keep the **structure**: all keys, nesting, types, nulls, empty arrays. Parser tests depend on shape, not values.
 - [ ] Keep one realistic value per field type (a real-looking epoch for dates, a Persian course name is fine if it is not personal).
-- [ ] Re-open the file and search for `@`, `sesskey`, `token`, `ticket`, `MoodleSession`.
+- [ ] Re-open the file and search for `@`, `sesskey`, `token`, `ticket`, `code`, `state`, `session_state`, `MoodleSession`; only placeholder credential values may remain.
 
 ## Naming
 

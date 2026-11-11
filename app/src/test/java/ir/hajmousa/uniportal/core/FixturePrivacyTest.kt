@@ -25,21 +25,32 @@ class FixturePrivacyTest {
             """{"sesskey":"private-key"}""",
             """{"token":"private-token"}""",
             """{"ticket":"private-ticket"}""",
+            """{"code":"private-code"}""",
+            """{"state":"private-state"}""",
+            """{"session_state":"private-session-state"}""",
             "https://example.invalid/?sesskey=private-key",
             "https://example.invalid/?token=private-token",
             "https://example.invalid/?ticket=private-ticket",
+            "https://example.invalid/?code=private-code",
+            "https://example.invalid/?state=private-state",
+            "https://example.invalid/?session_state=private-session-state",
+            "https://example.invalid/?redirect_uri=https%3A%2F%2Fexample.invalid%3Fcode%3Dprivate-code",
+            "https://example.invalid/?redirect_uri=https%3A%2F%2Fexample.invalid%3Fstate%3Dpath%26sesskey%3Dprivate-key",
         ).forEach { assertTrue("Expected private-data detection", containsPrivateData(it)) }
         assertFalse(containsPrivateData("""{"sesskey":"XXXX","startdate":1700000000,"enddate":1710000000}"""))
         assertFalse(containsPrivateData("https://example.invalid/?token=XXXX"))
+        assertFalse(containsPrivateData("""{"code":"XXXX","state":"XXXX","session_state":"XXXX"}"""))
+        assertFalse(containsPrivateData("https://example.invalid/?redirect_uri=https%3A%2F%2Fexample.invalid%3Fcode%3DXXXX"))
     }
 
     private fun containsPrivateData(text: String): Boolean {
         // Epoch fields are intentionally long numbers; other long digit runs need review.
         val withoutEpochs = text.replace(Regex(""""(?:startdate|enddate)"\s*:\s*[0-9]+"""), "")
+        val secretNames = "sesskey|token|ticket|code|state|session_state"
         return '@' in text ||
             Regex("""[0-9]{8,}""").containsMatchIn(withoutEpochs) ||
             Regex("""(?i)MoodleSession\s*=""").containsMatchIn(text) ||
-            Regex("""(?i)"(?:sesskey|token|ticket)"\s*:\s*"(?!XXXX")[^"]*"""").containsMatchIn(text) ||
-            Regex("""(?i)[?&](?:sesskey|token|ticket)=(?!XXXX(?:[&#"\s]|$))[^&#"\s]+""").containsMatchIn(text)
+            Regex("""(?i)"(?:$secretNames)"\s*:\s*"(?!XXXX")[^"]*"""").containsMatchIn(text) ||
+            Regex("""(?i)(?:[?&]|%3f|%26)(?:$secretNames)(?:=|%3d)(?!XXXX(?:[&#"\s]|%26|%23|$))[^&#"\s]+""").containsMatchIn(text)
     }
 }
