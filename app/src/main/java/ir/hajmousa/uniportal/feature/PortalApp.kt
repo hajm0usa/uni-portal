@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -47,6 +48,11 @@ import ir.hajmousa.uniportal.data.CachedCoursePage
 import ir.hajmousa.uniportal.data.PortalDatabase
 import ir.hajmousa.uniportal.core.time.formatPersianDateTime
 import ir.hajmousa.uniportal.feature.theme.PortalTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun PortalApp() {
@@ -55,6 +61,11 @@ fun PortalApp() {
     var signedIn by rememberSaveable { mutableStateOf(false) }
     var loginFailed by rememberSaveable { mutableStateOf(false) }
     var signingOut by remember { mutableStateOf(false) }
+    var hasSavedCredentials by remember { mutableStateOf(false) }
+    var credentialStorageError by remember { mutableStateOf(false) }
+    var automaticLoginUsed by rememberSaveable { mutableStateOf(false) }
+    var startupSessionChecked by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val session = remember(context) { SsoSession(context) }
     val coursesViewModel = viewModel<CoursesViewModel> {
@@ -66,8 +77,29 @@ fun PortalApp() {
     val coursesState by coursesViewModel.state.collectAsStateWithLifecycle()
     val loading = coursesState.loading || coursesState.clearing
     val needsLogin = coursesState.needsLogin
+    LaunchedEffect(session) {
+        val stored = withContext(Dispatchers.IO) { session.credentials.read().map { it != null } }
+        hasSavedCredentials = stored.getOrDefault(false)
+        credentialStorageError = stored.isFailure
+        val checkSession = hasSavedCredentials && !showLogin && !startupSessionChecked && !automaticLoginUsed && !signingOut
+        startupSessionChecked = true
+        if (checkSession) {
+            val restored = coursesViewModel.state.first { !it.loading && !it.clearing }
+            if (!restored.needsLogin) coursesViewModel.load()
+        }
+    }
+    LaunchedEffect(needsLogin, hasSavedCredentials, loading, showLogin, signingOut, showLogs) {
+        if (needsLogin && hasSavedCredentials && !automaticLoginUsed && !loading && !showLogin && !signingOut && !showLogs) {
+            automaticLoginUsed = true
+            coursesViewModel.clearForAccountChange {
+                signedIn = false
+                loginFailed = false
+                showLogin = true
+            }
+        }
+    }
     LaunchedEffect(coursesState) {
-        if (coursesState.page != null && !coursesState.fromCache && !loading) signedIn = true
+        if (coursesState.page != null && !coursesState.fromCache && !loading && !signingOut) signedIn = true
         if (needsLogin) signedIn = false
     }
     BackHandler(enabled = showLogs) { showLogs = false }
@@ -77,7 +109,13 @@ fun PortalApp() {
         if (showLogs) {
             LogScreen(Modifier.padding(padding)) { showLogs = false }
         } else if (showLogin) {
-            SsoLoginScreen(session, Modifier.padding(padding), onBack = { showLogin = false }) { success ->
+            SavedLoginScreen(session, Modifier.padding(padding),
+                onCredentialsChanged = {
+                    hasSavedCredentials = it
+                    credentialStorageError = false
+                },
+                onBack = { showLogin = false },
+            ) { success ->
                 showLogin = false
                 signedIn = success
                 loginFailed = !success
@@ -114,12 +152,19 @@ fun PortalApp() {
                                 else -> stringResource(R.string.placeholder_body)
                             },
                         )
-                        if (signedIn || coursesState.page != null) {
+                        if (credentialStorageError) Text(stringResource(R.string.credentials_storage_error))
+                        if (signedIn || coursesState.page != null || hasSavedCredentials || credentialStorageError) {
                             TextButton(enabled = !loading && !signingOut, onClick = {
-                                coursesViewModel.clearForAccountChange {
-                                    signingOut = true
-                                    session.signOut(android.webkit.CookieManager.getInstance()) {
+                                automaticLoginUsed = true
+                                scope.launch {
+                                    // Finish local deletion even if the UI is recreated during logout.
+                                    withContext(NonCancellable) {
+                                        signingOut = true
+                                        val cleared = session.signOut()
                                         signedIn = false
+                                        hasSavedCredentials = false
+                                        credentialStorageError = !cleared
+                                        coursesViewModel.clearForAccountChange {}
                                         signingOut = false
                                     }
                                 }
@@ -127,6 +172,7 @@ fun PortalApp() {
                         }
                         if (!signedIn || needsLogin) {
                             Button(enabled = !loading && !signingOut, onClick = {
+                                automaticLoginUsed = true
                                 coursesViewModel.clearForAccountChange {
                                     signedIn = false
                                     loginFailed = false
@@ -174,6 +220,7 @@ private fun LogScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
                         AppLog.Event.COURSE_LOAD_FAILED -> R.string.log_course_load_failed
                         AppLog.Event.SESSION_EXPIRED -> R.string.courses_needs_login
                         AppLog.Event.CACHE_STORAGE_FAILED -> R.string.courses_storage_error
+                        AppLog.Event.CREDENTIAL_STORAGE_FAILED -> R.string.credentials_storage_error
                     }
                     Text(stringResource(label), style = MaterialTheme.typography.titleMedium)
                     entry.diagnostic?.let {

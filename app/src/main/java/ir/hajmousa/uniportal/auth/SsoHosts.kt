@@ -10,6 +10,8 @@ internal object SsoHosts {
     const val CALLBACK_PATH = "/admin/oauth2callback.php"
     const val MOODLE_SESSION_COOKIE = "MoodleSession"
 
+    fun isSsoOrigin(uri: URI): Boolean = isAllowed(uri) && uri.host.equals(SSO_HOST, ignoreCase = true)
+
     fun isAllowed(uri: URI): Boolean =
         uri.scheme.equals("https", ignoreCase = true) &&
             uri.userInfo == null &&

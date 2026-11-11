@@ -36,18 +36,29 @@ class FixturePrivacyTest {
             "https://example.invalid/?session_state=private-session-state",
             "https://example.invalid/?redirect_uri=https%3A%2F%2Fexample.invalid%3Fcode%3Dprivate-code",
             "https://example.invalid/?redirect_uri=https%3A%2F%2Fexample.invalid%3Fstate%3Dpath%26sesskey%3Dprivate-key",
+            """<input name="__RequestVerificationToken" value="private-token">""",
+            """<input value="private-password" name="Password">""",
+            """<input name="Username" value="private-username">""",
         ).forEach { assertTrue("Expected private-data detection", containsPrivateData(it)) }
         assertFalse(containsPrivateData("""{"sesskey":"XXXX","startdate":1700000000,"enddate":1710000000}"""))
         assertFalse(containsPrivateData("https://example.invalid/?token=XXXX"))
         assertFalse(containsPrivateData("""{"code":"XXXX","state":"XXXX","session_state":"XXXX"}"""))
         assertFalse(containsPrivateData("https://example.invalid/?redirect_uri=https%3A%2F%2Fexample.invalid%3Fcode%3DXXXX"))
+        assertFalse(containsPrivateData("""<input name="__RequestVerificationToken" value="XXXX"><input name="Password" value="">"""))
     }
 
     private fun containsPrivateData(text: String): Boolean {
         // Epoch fields are intentionally long numbers; other long digit runs need review.
         val withoutEpochs = text.replace(Regex(""""(?:startdate|enddate)"\s*:\s*[0-9]+"""), "")
         val secretNames = "sesskey|token|ticket|code|state|session_state"
+        val privateInput = Regex("""<input\b[^>]*>""", RegexOption.IGNORE_CASE).findAll(text).any { input ->
+            val attributes = Regex("""([\w-]+)\s*=\s*(["'])(.*?)\2""").findAll(input.value)
+                .associate { it.groupValues[1].lowercase() to it.groupValues[3] }
+            attributes["name"]?.lowercase() in setOf("username", "password", "__requestverificationtoken") &&
+                attributes["value"].orEmpty() !in setOf("", "XXXX")
+        }
         return '@' in text ||
+            privateInput ||
             Regex("""[0-9]{8,}""").containsMatchIn(withoutEpochs) ||
             Regex("""(?i)MoodleSession\s*=""").containsMatchIn(text) ||
             Regex("""(?i)"(?:$secretNames)"\s*:\s*"(?!XXXX")[^"]*"""").containsMatchIn(text) ||

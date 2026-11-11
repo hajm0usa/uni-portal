@@ -21,6 +21,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
+      - name: Test SSO form safety
+        run: node scripts/test-sso-login.cjs
       - name: Test and build debug APK
         run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
       - name: Upload debug APK

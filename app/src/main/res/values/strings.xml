@@ -36,4 +36,13 @@
     <string name="courses_last_updated">آخرین دریافت: %1$s</string>
     <string name="courses_storage_error">خواندن، ذخیره یا پاک کردن داده‌های محلی ناموفق بود. دوباره تلاش کنید.</string>
     <string name="courses_clearing">در حال پاک کردن داده‌های ذخیره‌شده…</string>
+    <string name="credentials_explanation">نام کاربری و رمز عبور فقط به‌صورت رمزگذاری‌شده در این گوشی ذخیره می‌شوند تا هنگام باز بودن برنامه ورود خودکار انجام شود. خروج از حساب آن‌ها را پاک می‌کند.</string>
+    <string name="credentials_username">نام کاربری دانشگاه</string>
+    <string name="credentials_password">رمز عبور</string>
+    <string name="credentials_save_login">ذخیرهٔ امن و ورود</string>
+    <string name="credentials_manual_login">ورود دستی بدون ذخیرهٔ رمز</string>
+    <string name="credentials_forget">پاک کردن اطلاعات ورود ذخیره‌شده</string>
+    <string name="credentials_edit">تغییر یا پاک کردن اطلاعات ورود</string>
+    <string name="credentials_storage_error">خواندن، ذخیره یا پاک کردن اطلاعات ورود ناموفق بود. دوباره تلاش کنید.</string>
+    <string name="credentials_automatic_hint">ورود خودکار فقط یک بار تلاش می‌شود. اگر انجام نشد یا سامانه درخواست تأیید کرد، از همین صفحه دستی وارد شوید یا اطلاعات ورود را تغییر دهید.</string>
 </resources>
