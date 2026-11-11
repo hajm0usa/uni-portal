@@ -98,6 +98,7 @@ private fun LogScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
                     val label = when (entry.event) {
                         AppLog.Event.APP_STARTED -> R.string.log_app_started
                         AppLog.Event.LOG_SCREEN_OPENED -> R.string.log_screen_opened
+                        AppLog.Event.COOKIE_STORAGE_FAILED -> R.string.log_cookie_storage_failed
                     }
                     Text(stringResource(label), style = MaterialTheme.typography.titleMedium)
                     entry.diagnostic?.let {

@@ -11,4 +11,5 @@
     <string name="logs_privacy">گزارش‌ها فقط در حافظه نگه داشته می‌شوند و با بسته شدن فرایند برنامه پاک می‌شوند. متن پیام‌ها، نشانی‌ها و اطلاعات ورود ثبت نمی‌شوند.</string>
     <string name="log_app_started">برنامه باز شد</string>
     <string name="log_screen_opened">صفحهٔ گزارش‌ها باز شد</string>
+    <string name="log_cookie_storage_failed">ذخیرهٔ امن نشست ناموفق بود</string>
 </resources>

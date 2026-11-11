@@ -5,7 +5,7 @@ import java.util.ArrayDeque
 object AppLog {
     const val CAPACITY = 200
 
-    enum class Event { APP_STARTED, LOG_SCREEN_OPENED }
+    enum class Event { APP_STARTED, LOG_SCREEN_OPENED, COOKIE_STORAGE_FAILED }
 
     data class Entry(val event: Event, val diagnostic: String?)
 
