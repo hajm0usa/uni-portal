@@ -1,6 +1,7 @@
 package ir.hajmousa.uniportal.auth
 
 import java.net.URI
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,7 +9,10 @@ import org.junit.Test
 class SsoHostsTest {
     @Test
     fun `only the two observed HTTPS hosts and standard ports are in the WebView allow-list`() {
+        assertEquals("https://elearn.ut.ac.ir/login/index.php", SsoHosts.LOGIN_URL)
+        assertEquals("https://elearn.ut.ac.ir/", SsoHosts.MOODLE_URL)
         listOf(
+            SsoHosts.LOGIN_URL,
             "https://elearn.ut.ac.ir/",
             "https://sso1.ut.ac.ir/login",
             "HTTPS://ELEARN.UT.AC.IR/admin/oauth2callback.php?code=private",

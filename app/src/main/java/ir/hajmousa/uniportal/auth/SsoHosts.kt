@@ -6,6 +6,7 @@ internal object SsoHosts {
     const val MOODLE_HOST = "elearn.ut.ac.ir"
     const val SSO_HOST = "sso1.ut.ac.ir"
     const val MOODLE_URL = "https://elearn.ut.ac.ir/"
+    const val LOGIN_URL = "${MOODLE_URL}login/index.php"
     const val CALLBACK_PATH = "/admin/oauth2callback.php"
     const val MOODLE_SESSION_COOKIE = "MoodleSession"
 

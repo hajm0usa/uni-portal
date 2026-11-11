@@ -17,6 +17,7 @@ The owner fills this while developing, using the browser DevTools (F12). The age
 ## SSO
 
 - Moodle base URL: `https://elearn.ut.ac.ir/` (confirmed by owner)
+- Login entry URL: `https://elearn.ut.ac.ir/login/index.php` (confirmed by owner). The app now opens this URL in the login WebView instead of the site root; native sesskey fetching and cookie import still use the root URL. The changed entry point awaits device verification.
 - SSO host(s): `sso1.ut.ac.ir` (confirmed by owner; only this SSO hostname appeared in the supplied document-request list, but completeness of the capture remains unverified).
 - Main-frame redirect chain after login (hosts only): exact sequence `TODO`. The owner confirmed that browser sign-in successfully reaches the course dashboard with `elearn.ut.ac.ir` in the address bar. The supplied Network Doc list ends in SSO but is not verified as a chronological main-frame redirect chain; it must not be treated as the final top-level navigation.
 - Observed document-request domains in the owner's supplied order (full hostnames confirmed by owner): `elearn.ut.ac.ir` -> `sso1.ut.ac.ir` -> `elearn.ut.ac.ir` -> `elearn.ut.ac.ir` -> `sso1.ut.ac.ir` -> `elearn.ut.ac.ir` -> `elearn.ut.ac.ir` -> `sso1.ut.ac.ir` -> `sso1.ut.ac.ir`. The owner confirmed that the abbreviated `eleaen` entry also meant `elearn.ut.ac.ir`. Document requests may include frames; this list alone does not establish top-level navigation order.

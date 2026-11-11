@@ -55,7 +55,7 @@ fun SsoLoginScreen(
             modifier = Modifier.weight(1f),
             factory = { viewContext ->
                 createLoginWebView(viewContext, session, executor, onResult).apply {
-                    loadUrl(SsoHosts.MOODLE_URL)
+                    loadUrl(SsoHosts.LOGIN_URL)
                 }
             },
         )
