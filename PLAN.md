@@ -35,7 +35,7 @@ Assumptions to verify:
 4. After the session expires, the re-login flow works.
 
 - [ ] [owner] Fill the "SSO" and "Course list" sections of `docs/DISCOVERY.md` (hosts, cookie names, the exact AJAX method for the course list, sanitized sample response).
-  - Discovery in progress: owner-confirmed hosts, Moodle cookie attributes, course-list method/arguments and a sanitized real success fixture are recorded. SSO cookies/redirects, sesskey location, request batch envelope and error fixtures remain pending. This does not waive Slice 0's verification gate.
+  - Discovery in progress: owner-confirmed hosts, Moodle cookie attributes, sesskey presence/syntax in `M.cfg`, course-list method/arguments and sanitized real course/config fixtures are recorded. SSO cookies/redirects, request batch envelope and error fixtures remain pending. This does not waive Slice 0's verification gate.
   - Fixture JSON/structure/sanitization checks and all six JVM unit tests pass locally (four AppLog, two fixture privacy). The course parser and Android/network verification remain pending.
 - [ ] [agent] `SsoSession` + WebView login screen restricted to the university and SSO hosts (external links open in the system browser; no `addJavascriptInterface`).
 - [ ] [agent] `PersistentCookieJar` keyed by host, AES-GCM with Keystore key.
