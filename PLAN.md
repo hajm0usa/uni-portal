@@ -50,7 +50,7 @@ Assumptions to verify:
 
 Done when: sign in, see the real course list, kill the session on the server side (or wait), see the app move to `NeedsLogin`, sign in again, list reloads. Findings written to `docs/DISCOVERY.md`.
 
-**Status:** Slice 1 now has a visible restricted-host SSO WebView, encrypted cookie jar, callback recognition, session-cookie presence check, fixture-backed course/sesskey parsers and shared course model. The owner supplied CI errors for the WebView mixed-content constant and third-party cookie call; both references were corrected to `WebSettings.MIXED_CONTENT_NEVER_ALLOW` and the `CookieManager` instance method. A fresh CI build is required to verify the fix. Sign-in/callback behavior is not confirmed in-app; there is no AJAX client, Room cache, course screen, or NeedsLogin state yet. Local Android build remains blocked resolving AGP from Google's repository. All 26 JVM tests pass via the standalone Kotlin compiler; Slice 1 is not complete.
+**Status:** Slice 1 now has a visible restricted-host SSO WebView, encrypted cookie jar, callback recognition, session-cookie presence check, fixture-backed course/sesskey parsers and shared course model. CI compiled and packaged the debug APK after the WebView API fix, but one cookie test failed because its test-only `.ut.ac.ir` cookie domain is rejected by OkHttp's public-suffix rules; the fixture now uses `.example.com`. Local Gradle remains blocked resolving AGP from Google's repository, so rerun CI to verify the test fix. Sign-in/callback behavior is not confirmed in-app; there is no AJAX client, Room cache, course screen, or NeedsLogin state yet. Slice 1 is not complete.
 
 ---
 

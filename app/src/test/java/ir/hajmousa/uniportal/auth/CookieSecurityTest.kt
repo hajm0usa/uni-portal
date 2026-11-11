@@ -72,13 +72,13 @@ class CookieSecurityTest {
 
     @Test
     fun `cookie domain path secure expiry and explicit host clearing are honored`() {
-        val sso = "https://sso1.ut.ac.ir/login".toHttpUrl()
-        val moodle = "https://elearn.ut.ac.ir/lib/ajax/service.php".toHttpUrl()
-        val nested = "https://elearn.ut.ac.ir/admin/".toHttpUrl()
-        val http = "http://elearn.ut.ac.ir/lib/ajax/service.php".toHttpUrl()
+        val sso = "https://sso1.example.com/login".toHttpUrl()
+        val moodle = "https://elearn.example.com/lib/ajax/service.php".toHttpUrl()
+        val nested = "https://elearn.example.com/admin/".toHttpUrl()
+        val http = "http://elearn.example.com/lib/ajax/service.php".toHttpUrl()
         val now = System.currentTimeMillis()
-        val shared = Cookie.parse(sso, "shared=x; Domain=.ut.ac.ir; Path=/lib; Secure; HttpOnly")!!
-        val scoped = Cookie.parse(sso, "narrow=x; Domain=.ut.ac.ir; Path=/admin; Secure")!!
+        val shared = Cookie.parse(sso, "shared=x; Domain=.example.com; Path=/lib; Secure; HttpOnly")!!
+        val scoped = Cookie.parse(sso, "narrow=x; Domain=.example.com; Path=/admin; Secure")!!
         val expired = Cookie.Builder().name("old").value("x").hostOnlyDomain("elearn.ut.ac.ir")
             .path("/").expiresAt(now - 1).build()
         val moodleCookie = Cookie.parse(moodle, "MoodleSession=m; Path=/; Secure")!!
@@ -89,10 +89,10 @@ class CookieSecurityTest {
         assertEquals(listOf("MoodleSession", "narrow"), CookieJarLogic.load(records, nested, now).cookies.map { it.name }.sorted())
         assertTrue(CookieJarLogic.load(records, http, now).cookies.isEmpty())
         assertEquals(3, CookieJarLogic.load(records, moodle, now).records.size)
-        assertEquals(listOf("MoodleSession"), CookieJarLogic.clear(records, "sso1.ut.ac.ir").map {
+        assertEquals(listOf("MoodleSession"), CookieJarLogic.clear(records, "sso1.example.com").map {
             Cookie.parse(it.url.toHttpUrl(), it.value)!!.name
         })
-        assertEquals(listOf("narrow", "shared"), CookieJarLogic.clear(records, "elearn.ut.ac.ir").map {
+        assertEquals(listOf("narrow", "shared"), CookieJarLogic.clear(records, "elearn.example.com").map {
             Cookie.parse(it.url.toHttpUrl(), it.value)!!.name
         }.sorted())
     }
