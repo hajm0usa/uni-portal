@@ -38,6 +38,8 @@ class PersistentCookieJar(context: Context) : CookieJar {
 
     @Synchronized
     fun clearAll() {
+        val store = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+        if (store.containsAlias(KEY_ALIAS)) store.deleteEntry(KEY_ALIAS)
         if (!preferences.edit().remove(COOKIES).commit()) failStorage()
     }
 

@@ -12,4 +12,11 @@
     <string name="log_app_started">برنامه باز شد</string>
     <string name="log_screen_opened">صفحهٔ گزارش‌ها باز شد</string>
     <string name="log_cookie_storage_failed">ذخیرهٔ امن نشست ناموفق بود</string>
+    <string name="login_title">ورود به سامانهٔ دانشگاه</string>
+    <string name="login_open">ورود به سامانه</string>
+    <string name="login_cancel">بازگشت</string>
+    <string name="login_working">در حال بررسی نشست…</string>
+    <string name="login_failed">ورود کامل نشد. دوباره تلاش کنید.</string>
+    <string name="login_success">ورود انجام شد.</string>
+    <string name="logout">خروج از حساب</string>
 </resources>
