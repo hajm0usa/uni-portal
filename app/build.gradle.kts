@@ -56,6 +56,16 @@ kotlin {
     }
 }
 
+// Plain JVM tests cannot load the Android variant's public-suffix list from assets.
+configurations.matching {
+    it.name.endsWith("UnitTestCompileClasspath") || it.name.endsWith("UnitTestRuntimeClasspath")
+}.configureEach {
+    resolutionStrategy.dependencySubstitution {
+        substitute(module("com.squareup.okhttp3:okhttp"))
+            .using(module("com.squareup.okhttp3:okhttp-jvm:${libs.versions.okhttp.get()}"))
+    }
+}
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
