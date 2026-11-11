@@ -7,6 +7,7 @@ import ir.hajmousa.uniportal.data.Course
 import ir.hajmousa.uniportal.data.CourseRepository
 import ir.hajmousa.uniportal.data.MemoryCourseDao
 import ir.hajmousa.uniportal.provider.moodle.MoodleAjaxClient
+import ir.hajmousa.uniportal.provider.moodle.MoodleProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -41,7 +42,7 @@ class CoursesViewModelTest {
 
     private fun createModel() {
         store.clear()
-        model = CoursesViewModel(CourseRepository(MoodleAjaxClient(CookieJar.NO_COOKIES, "UniPortal/test", server.url("/"), 0), dao))
+        model = CoursesViewModel(CourseRepository(MoodleProvider(MoodleAjaxClient(CookieJar.NO_COOKIES, "UniPortal/test", server.url("/"), 0)), dao))
         store.put("courses", model)
     }
 
@@ -127,6 +128,17 @@ class CoursesViewModelTest {
         assertEquals(Reason.STORAGE_ERROR, failed.error)
         assertFalse(openedAnotherAccount)
         assertNull(failed.page)
+    }
+
+    @Test
+    fun `expired provider still requires login if recording its error fails`() = runTest(dispatcher) {
+        model.state.first { !it.loading }
+        dao.failStorage = true
+        server.enqueue(MockResponse(body = "<html>synthetic login page</html>"))
+        model.load()
+        val failed = model.state.first { !it.loading }
+        assertTrue(failed.needsLogin)
+        assertEquals(Reason.STORAGE_ERROR, failed.error)
     }
 
     private fun seedCache(): Course {

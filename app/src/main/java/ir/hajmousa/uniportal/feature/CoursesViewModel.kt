@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import ir.hajmousa.uniportal.core.PortalException
 import ir.hajmousa.uniportal.data.CachedCoursePage
 import ir.hajmousa.uniportal.data.CourseRepository
+import ir.hajmousa.uniportal.data.ProviderSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +34,7 @@ class CoursesViewModel(private val repository: CourseRepository) : ViewModel() {
             val reason = cached.exceptionOrNull()?.let { PortalException.Reason.STORAGE_ERROR } ?: page?.lastError
             mutableState.value = CoursesState(
                 page = page, fromCache = page != null,
-                needsLogin = reason == PortalException.Reason.SESSION_EXPIRED,
+                needsLogin = repository.session.value == ProviderSession.State.NeedsLogin,
                 error = reason?.takeUnless { it == PortalException.Reason.SESSION_EXPIRED },
             )
         }
@@ -53,7 +54,7 @@ class CoursesViewModel(private val repository: CourseRepository) : ViewModel() {
                     val reason = (it as? PortalException)?.reason ?: PortalException.Reason.PARSE_ERROR
                     mutableState.value.copy(
                         loading = false, fromCache = mutableState.value.page != null,
-                        needsLogin = reason == PortalException.Reason.SESSION_EXPIRED,
+                        needsLogin = repository.session.value == ProviderSession.State.NeedsLogin,
                         error = reason.takeUnless { it == PortalException.Reason.SESSION_EXPIRED },
                     )
                 },

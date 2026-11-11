@@ -2,32 +2,46 @@ package ir.hajmousa.uniportal.data
 
 import ir.hajmousa.uniportal.core.AppLog
 import ir.hajmousa.uniportal.core.PortalException
-import ir.hajmousa.uniportal.provider.moodle.MoodleAjaxClient
+import ir.hajmousa.uniportal.provider.moodle.MoodleProvider
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.CookieJar
 import java.time.Clock
 
 class CourseRepository internal constructor(
-    private val client: MoodleAjaxClient,
+    private val provider: Provider,
+    private val courses: DataSource<Course>,
     private val dao: CourseDao,
     private val clock: Clock = Clock.systemUTC(),
 ) {
-    constructor(cookieJar: CookieJar, userAgent: String, dao: CourseDao) : this(MoodleAjaxClient(cookieJar, userAgent), dao)
+    internal constructor(provider: MoodleProvider, dao: CourseDao, clock: Clock = Clock.systemUTC()) :
+        this(provider, provider.courses, dao, clock)
+
+    constructor(cookieJar: CookieJar, userAgent: String, dao: CourseDao) : this(MoodleProvider(cookieJar, userAgent), dao)
+
+    val session = provider.session.state
 
     // shortcut: reread on startup/refresh only, switch to DAO Flow when another cache writer is added.
-    fun cachedFirstPage(): Result<CachedCoursePage?> = synchronized(cacheLock) {
-        storage { dao.readPage(PROVIDER_ID) }
+    suspend fun cachedFirstPage(): Result<CachedCoursePage?> = cacheLock.withLock {
+        storage {
+            val page = dao.readPage(provider.id)
+            if (dao.syncState(provider.id, CourseDao.SECTION)?.lastError == PortalException.Reason.SESSION_EXPIRED.name) {
+                provider.session.requireLogin()
+            }
+            page
+        }
     }
 
-    fun fetchFirstPage(): Result<CachedCoursePage> = synchronized(cacheLock) {
-        val fetched = client.fetchFirstCoursePage()
+    suspend fun fetchFirstPage(): Result<CachedCoursePage> = cacheLock.withLock {
+        val fetched = courses.fetch()
         val result = if (fetched.isSuccess) {
             storage {
-                dao.replacePage(PROVIDER_ID, fetched.getOrThrow().courses, clock.instant().epochSecond)
-                requireNotNull(dao.readPage(PROVIDER_ID))
+                dao.replacePage(provider.id, fetched.getOrThrow(), clock.instant().epochSecond)
+                requireNotNull(dao.readPage(provider.id))
             }
         } else {
             val reason = (fetched.exceptionOrNull() as? PortalException)?.reason ?: PortalException.Reason.PARSE_ERROR
-            val recorded = storage { dao.recordFailure(PROVIDER_ID, reason) }
+            val recorded = storage { dao.recordFailure(provider.id, reason) }
             Result.failure(recorded.exceptionOrNull() ?: PortalException(reason))
         }
         val event = when {
@@ -40,8 +54,8 @@ class CourseRepository internal constructor(
         result
     }
 
-    fun clearCache(): Result<Unit> = synchronized(cacheLock) {
-        storage { dao.clearPage(PROVIDER_ID) }
+    suspend fun clearCache(): Result<Unit> = cacheLock.withLock {
+        storage { dao.clearPage(provider.id) }.also { if (it.isSuccess) provider.session.reset() }
     }
 
     private fun <T> storage(block: () -> T): Result<T> = try {
@@ -52,8 +66,7 @@ class CourseRepository internal constructor(
     }
 
     private companion object {
-        const val PROVIDER_ID = "moodle"
         // Serialize clearing with in-flight refreshes, even across recreated repository instances.
-        val cacheLock = Any()
+        val cacheLock = Mutex()
     }
 }

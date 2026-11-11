@@ -4,6 +4,8 @@ import ir.hajmousa.uniportal.core.AppLog
 import ir.hajmousa.uniportal.core.PortalException
 import ir.hajmousa.uniportal.core.PortalException.Reason
 import ir.hajmousa.uniportal.provider.moodle.MoodleAjaxClient
+import ir.hajmousa.uniportal.provider.moodle.MoodleProvider
+import kotlinx.coroutines.runBlocking
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -28,7 +30,7 @@ class CourseRepositoryTest {
     fun start() {
         server = MockWebServer().apply { start() }
         repository = CourseRepository(
-            MoodleAjaxClient(CookieJar.NO_COOKIES, "UniPortal/test", server.url("/"), 0), dao,
+            MoodleProvider(MoodleAjaxClient(CookieJar.NO_COOKIES, "UniPortal/test", server.url("/"), 0)), dao,
             Clock.fixed(Instant.ofEpochSecond(1700000000), ZoneOffset.UTC),
         )
         AppLog.clear()
@@ -41,7 +43,7 @@ class CourseRepositoryTest {
     }
 
     @Test
-    fun `successful refresh replaces only this provider snapshot and persists server order and epoch seconds`() {
+    fun `successful refresh replaces only this provider snapshot and persists server order and epoch seconds`() = runBlocking {
         dao.replacePage("moodle", listOf(old), 1)
         val sibling = Course("other", "1", "synthetic other course", null)
         dao.replacePage("other", listOf(sibling), 2)
@@ -53,10 +55,11 @@ class CourseRepositoryTest {
         assertNull(page.lastError)
         assertEquals(page, repository.cachedFirstPage().getOrThrow())
         assertEquals(listOf(sibling), dao.readPage("other")!!.courses)
+        assertEquals(ProviderSession.State.Active, repository.session.value)
     }
 
     @Test
-    fun `failed refresh preserves old courses and timestamp and records only a safe reason`() {
+    fun `failed refresh preserves old courses and timestamp and records only a safe reason`() = runBlocking {
         dao.replacePage("moodle", listOf(old), 123)
         server.enqueue(MockResponse(code = 500, body = "private-example-input"))
         val failure = repository.fetchFirstPage().exceptionOrNull() as PortalException
@@ -69,7 +72,7 @@ class CourseRepositoryTest {
     }
 
     @Test
-    fun `successful empty page is cached rather than confused with absent cache`() {
+    fun `successful empty page is cached rather than confused with absent cache`() = runBlocking {
         assertNull(repository.cachedFirstPage().getOrThrow())
         dao.replacePage("moodle", listOf(old), 1)
         enqueuePage("courses_empty_synthetic.json")
@@ -80,10 +83,14 @@ class CourseRepositoryTest {
     }
 
     @Test
-    fun `cache clearing removes courses and metadata without touching a sibling provider`() {
+    fun `cache clearing removes courses and metadata without touching a sibling provider`() = runBlocking {
         dao.replacePage("moodle", listOf(old), 1)
         dao.replacePage("other", emptyList(), 2)
+        dao.recordFailure("moodle", Reason.SESSION_EXPIRED)
+        repository.cachedFirstPage().getOrThrow()
+        assertEquals(ProviderSession.State.NeedsLogin, repository.session.value)
         repository.clearCache().getOrThrow()
+        assertEquals(ProviderSession.State.Unknown, repository.session.value)
         assertNull(repository.cachedFirstPage().getOrThrow())
         assertTrue(dao.courses("moodle").isEmpty())
         assertNull(dao.syncState("moodle", CourseDao.SECTION))
@@ -92,7 +99,7 @@ class CourseRepositoryTest {
     }
 
     @Test
-    fun `cache failures are safe typed errors and never claim clearing succeeded`() {
+    fun `cache failures are safe typed errors and never claim clearing succeeded`() = runBlocking {
         dao.failStorage = true
         listOf(repository.cachedFirstPage(), repository.clearCache()).forEach {
             val failure = it.exceptionOrNull() as PortalException
@@ -103,10 +110,18 @@ class CourseRepositoryTest {
     }
 
     @Test
-    fun `corrupt cached epoch is rejected before date formatting can overflow`() {
+    fun `corrupt cached epoch is rejected before date formatting can overflow`() = runBlocking {
         dao.saveSyncState(SyncStateEntity("moodle", CourseDao.SECTION, Long.MAX_VALUE, null))
         val failure = repository.cachedFirstPage().exceptionOrNull() as PortalException
         assertEquals(Reason.STORAGE_ERROR, failure.reason)
+    }
+
+    @Test
+    fun `startup restores login requirement even when no course fetch ever succeeded`() = runBlocking {
+        dao.recordFailure("moodle", Reason.SESSION_EXPIRED)
+        assertNull(repository.cachedFirstPage().getOrThrow())
+        assertEquals(ProviderSession.State.NeedsLogin, repository.session.value)
+        assertEquals(0, server.requestCount)
     }
 
     @Test
@@ -124,7 +139,7 @@ class CourseRepositoryTest {
     }
 
     @Test
-    fun `account clearing waits for an in-flight refresh and removes its resulting snapshot`() {
+    fun `account clearing waits for an in-flight refresh and removes its resulting snapshot`() = runBlocking {
         server.enqueue(MockResponse.Builder()
             .body(requireNotNull(javaClass.getResource("/fixtures/moodle/moodle_config_ok.html")).readText())
             .bodyDelay(100, TimeUnit.MILLISECONDS).build())
@@ -132,15 +147,35 @@ class CourseRepositoryTest {
             body = requireNotNull(javaClass.getResource("/fixtures/moodle/courses_ok.json")).readText()))
         val executor = Executors.newFixedThreadPool(2)
         try {
-            val refresh = executor.submit<Boolean> { repository.fetchFirstPage().isSuccess }
+            val refresh = executor.submit<Boolean> { runBlocking { repository.fetchFirstPage().isSuccess } }
             assertNotNull(server.takeRequest(5, TimeUnit.SECONDS))
-            val cleared = executor.submit<Boolean> { repository.clearCache().isSuccess }
+            val cleared = executor.submit<Boolean> { runBlocking { repository.clearCache().isSuccess } }
             assertTrue(refresh.get(5, TimeUnit.SECONDS))
             assertTrue(cleared.get(5, TimeUnit.SECONDS))
             assertNull(repository.cachedFirstPage().getOrThrow())
         } finally {
             executor.shutdownNow()
         }
+    }
+
+    @Test
+    fun `repository uses the supplied provider source and cache namespace`() = runBlocking {
+        val session = ProviderSession()
+        val course = old.copy(providerId = "synthetic-other")
+        val source = DataSource { Result.success(listOf(course)) }
+        val provider = object : Provider {
+            override val id = "synthetic-other"
+            override val session = session
+            override val sources = listOf(source)
+        }
+        dao.replacePage("moodle", listOf(old), 1)
+        val other = CourseRepository(provider, source, dao)
+        assertEquals(listOf(course), other.fetchFirstPage().getOrThrow().courses)
+        assertEquals(listOf(course), other.cachedFirstPage().getOrThrow()!!.courses)
+        other.clearCache().getOrThrow()
+        assertNull(dao.readPage(provider.id))
+        assertEquals(listOf(old), dao.readPage("moodle")!!.courses)
+        assertEquals(0, server.requestCount)
     }
 
     private fun enqueuePage(name: String) {
