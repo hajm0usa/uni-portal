@@ -77,9 +77,11 @@ class CookieSecurityTest {
         val nested = "https://elearn.example.com/admin/".toHttpUrl()
         val http = "http://elearn.example.com/lib/ajax/service.php".toHttpUrl()
         val now = System.currentTimeMillis()
-        val shared = Cookie.parse(sso, "shared=x; Domain=.example.com; Path=/lib; Secure; HttpOnly")!!
-        val scoped = Cookie.parse(sso, "narrow=x; Domain=.example.com; Path=/admin; Secure")!!
-        val expired = Cookie.Builder().name("old").value("x").hostOnlyDomain("elearn.ut.ac.ir")
+        val shared = Cookie.Builder().name("shared").value("x").domain("example.com")
+            .path("/lib").secure().httpOnly().build()
+        val scoped = Cookie.Builder().name("narrow").value("x").domain("example.com")
+            .path("/admin").secure().build()
+        val expired = Cookie.Builder().name("old").value("x").hostOnlyDomain("elearn.example.com")
             .path("/").expiresAt(now - 1).build()
         val moodleCookie = Cookie.parse(moodle, "MoodleSession=m; Path=/; Secure")!!
         val records = CookieJarLogic.save(emptyList(), sso, listOf(shared, scoped, expired), now) +
