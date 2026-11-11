@@ -1,0 +1,89 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "d95c216d18a1a9318f557c1524ec3f2e",
+    "entities": [
+      {
+        "tableName": "course",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`providerId` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT, `shortName` TEXT, `position` INTEGER NOT NULL, PRIMARY KEY(`providerId`, `remoteId`))",
+        "fields": [
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "shortName",
+            "columnName": "shortName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "providerId",
+            "remoteId"
+          ]
+        }
+      },
+      {
+        "tableName": "sync_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`providerId` TEXT NOT NULL, `section` TEXT NOT NULL, `lastSuccessEpochSeconds` INTEGER, `lastError` TEXT, PRIMARY KEY(`providerId`, `section`))",
+        "fields": [
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "section",
+            "columnName": "section",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSuccessEpochSeconds",
+            "columnName": "lastSuccessEpochSeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "providerId",
+            "section"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd95c216d18a1a9318f557c1524ec3f2e')"
+    ]
+  }
+}

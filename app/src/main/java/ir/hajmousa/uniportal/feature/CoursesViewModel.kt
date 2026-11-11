@@ -3,7 +3,7 @@ package ir.hajmousa.uniportal.feature
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.hajmousa.uniportal.core.PortalException
-import ir.hajmousa.uniportal.data.Course
+import ir.hajmousa.uniportal.data.CachedCoursePage
 import ir.hajmousa.uniportal.data.CourseRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -12,36 +12,63 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-sealed interface CoursesState {
-    data object Idle : CoursesState
-    data object Loading : CoursesState
-    data class Loaded(val courses: List<Course>) : CoursesState
-    data object NeedsLogin : CoursesState
-    data class Failed(val reason: PortalException.Reason) : CoursesState
-}
+data class CoursesState(
+    val page: CachedCoursePage? = null,
+    val loading: Boolean = false,
+    val fromCache: Boolean = false,
+    val needsLogin: Boolean = false,
+    val error: PortalException.Reason? = null,
+    val clearing: Boolean = false,
+)
 
 class CoursesViewModel(private val repository: CourseRepository) : ViewModel() {
-    private val mutableState = MutableStateFlow<CoursesState>(CoursesState.Idle)
+    private val mutableState = MutableStateFlow(CoursesState(loading = true))
     val state = mutableState.asStateFlow()
     private var loadJob: Job? = null
 
+    init {
+        loadJob = viewModelScope.launch {
+            val cached = withContext(Dispatchers.IO) { repository.cachedFirstPage() }
+            val page = cached.getOrNull()
+            val reason = cached.exceptionOrNull()?.let { PortalException.Reason.STORAGE_ERROR } ?: page?.lastError
+            mutableState.value = CoursesState(
+                page = page, fromCache = page != null,
+                needsLogin = reason == PortalException.Reason.SESSION_EXPIRED,
+                error = reason?.takeUnless { it == PortalException.Reason.SESSION_EXPIRED },
+            )
+        }
+    }
+
     fun load() {
-        if (mutableState.value == CoursesState.Loading) return
-        mutableState.value = CoursesState.Loading
+        if (mutableState.value.loading || mutableState.value.clearing) return
+        mutableState.value = mutableState.value.copy(
+            loading = true, fromCache = mutableState.value.page != null,
+            needsLogin = false, error = null,
+        )
         loadJob = viewModelScope.launch {
             val result = withContext(Dispatchers.IO) { repository.fetchFirstPage() }
             mutableState.value = result.fold(
-                onSuccess = { CoursesState.Loaded(it) },
+                onSuccess = { CoursesState(page = it) },
                 onFailure = {
                     val reason = (it as? PortalException)?.reason ?: PortalException.Reason.PARSE_ERROR
-                    if (reason == PortalException.Reason.SESSION_EXPIRED) CoursesState.NeedsLogin else CoursesState.Failed(reason)
+                    mutableState.value.copy(
+                        loading = false, fromCache = mutableState.value.page != null,
+                        needsLogin = reason == PortalException.Reason.SESSION_EXPIRED,
+                        error = reason.takeUnless { it == PortalException.Reason.SESSION_EXPIRED },
+                    )
                 },
             )
         }
     }
 
-    fun reset() {
+    fun clearForAccountChange(onCleared: () -> Unit) {
+        if (mutableState.value.clearing) return
         loadJob?.cancel()
-        mutableState.value = CoursesState.Idle
+        mutableState.value = CoursesState(clearing = true)
+        loadJob = viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { repository.clearCache() }
+            mutableState.value = if (result.isSuccess) CoursesState() else CoursesState(error = PortalException.Reason.STORAGE_ERROR)
+            if (result.isSuccess) onCleared()
+        }
     }
 }

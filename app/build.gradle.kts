@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -51,6 +52,10 @@ android {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
@@ -79,8 +84,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
 }

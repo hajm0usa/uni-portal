@@ -20,7 +20,7 @@
     <string name="login_success">ورود انجام شد.</string>
     <string name="logout">خروج از حساب</string>
     <string name="courses_title">درس‌ها</string>
-    <string name="courses_first_page_note">فعلاً فقط صفحهٔ اول درس‌ها نمایش داده می‌شود و نسخهٔ آفلاین ذخیره نمی‌شود.</string>
+    <string name="courses_first_page_note">فعلاً فقط صفحهٔ اول درس‌ها نمایش داده می‌شود. نسخهٔ ذخیره‌شده بدون اینترنت هم در دسترس است.</string>
     <string name="courses_load">دریافت درس‌ها با نشست ذخیره‌شده</string>
     <string name="courses_loading">در حال دریافت درس‌ها…</string>
     <string name="courses_needs_login">نشست معتبر نیست. دوباره وارد سامانه شوید.</string>
@@ -32,4 +32,8 @@
     <string name="course_unnamed">درس بدون عنوان</string>
     <string name="log_courses_loaded">صفحهٔ اول درس‌ها دریافت شد</string>
     <string name="log_course_load_failed">دریافت درس‌ها ناموفق بود</string>
+    <string name="courses_cached_note">نسخهٔ ذخیره‌شده نمایش داده می‌شود و ممکن است به‌روز نباشد.</string>
+    <string name="courses_last_updated">آخرین دریافت: %1$s</string>
+    <string name="courses_storage_error">خواندن، ذخیره یا پاک کردن داده‌های محلی ناموفق بود. دوباره تلاش کنید.</string>
+    <string name="courses_clearing">در حال پاک کردن داده‌های ذخیره‌شده…</string>
 </resources>

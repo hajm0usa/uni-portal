@@ -43,6 +43,9 @@ import ir.hajmousa.uniportal.auth.SsoSession
 import ir.hajmousa.uniportal.core.PortalException
 import ir.hajmousa.uniportal.data.CourseRepository
 import ir.hajmousa.uniportal.data.Course
+import ir.hajmousa.uniportal.data.CachedCoursePage
+import ir.hajmousa.uniportal.data.PortalDatabase
+import ir.hajmousa.uniportal.core.time.formatPersianDateTime
 import ir.hajmousa.uniportal.feature.theme.PortalTheme
 
 @Composable
@@ -55,13 +58,16 @@ fun PortalApp() {
     val context = LocalContext.current
     val session = remember(context) { SsoSession(context) }
     val coursesViewModel = viewModel<CoursesViewModel> {
-        CoursesViewModel(CourseRepository(session.cookieJar, "UniPortal/${BuildConfig.VERSION_NAME} (Android; read-only)"))
+        CoursesViewModel(CourseRepository(
+            session.cookieJar, "UniPortal/${BuildConfig.VERSION_NAME} (Android; read-only)",
+            PortalDatabase.get(context).courseDao(),
+        ))
     }
     val coursesState by coursesViewModel.state.collectAsStateWithLifecycle()
-    val loading = coursesState == CoursesState.Loading
-    val needsLogin = coursesState == CoursesState.NeedsLogin
+    val loading = coursesState.loading || coursesState.clearing
+    val needsLogin = coursesState.needsLogin
     LaunchedEffect(coursesState) {
-        if (coursesState is CoursesState.Loaded) signedIn = true
+        if (coursesState.page != null && !coursesState.fromCache && !loading) signedIn = true
         if (needsLogin) signedIn = false
     }
     BackHandler(enabled = showLogs) { showLogs = false }
@@ -108,20 +114,24 @@ fun PortalApp() {
                                 else -> stringResource(R.string.placeholder_body)
                             },
                         )
-                        if (signedIn && !needsLogin) {
+                        if (signedIn || coursesState.page != null) {
                             TextButton(enabled = !loading && !signingOut, onClick = {
-                                signingOut = true
-                                session.signOut(android.webkit.CookieManager.getInstance()) {
-                                    signedIn = false
-                                    coursesViewModel.reset()
-                                    signingOut = false
+                                coursesViewModel.clearForAccountChange {
+                                    signingOut = true
+                                    session.signOut(android.webkit.CookieManager.getInstance()) {
+                                        signedIn = false
+                                        signingOut = false
+                                    }
                                 }
                             }) { Text(stringResource(R.string.logout)) }
-                        } else {
+                        }
+                        if (!signedIn || needsLogin) {
                             Button(enabled = !loading && !signingOut, onClick = {
-                                loginFailed = false
-                                coursesViewModel.reset()
-                                showLogin = true
+                                coursesViewModel.clearForAccountChange {
+                                    signedIn = false
+                                    loginFailed = false
+                                    showLogin = true
+                                }
                             }) { Text(stringResource(R.string.login_open)) }
                         }
                     }
@@ -163,6 +173,7 @@ private fun LogScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
                         AppLog.Event.COURSES_LOADED -> R.string.log_courses_loaded
                         AppLog.Event.COURSE_LOAD_FAILED -> R.string.log_course_load_failed
                         AppLog.Event.SESSION_EXPIRED -> R.string.courses_needs_login
+                        AppLog.Event.CACHE_STORAGE_FAILED -> R.string.courses_storage_error
                     }
                     Text(stringResource(label), style = MaterialTheme.typography.titleMedium)
                     entry.diagnostic?.let {
@@ -179,39 +190,41 @@ private fun CoursesContent(state: CoursesState, enabled: Boolean = true, onLoad:
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.courses_title), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(R.string.courses_first_page_note))
-        if (state != CoursesState.NeedsLogin) {
-            Button(onClick = onLoad, enabled = enabled && state != CoursesState.Loading) {
+        if (!state.needsLogin) {
+            Button(onClick = onLoad, enabled = enabled && !state.loading && !state.clearing) {
                 Text(stringResource(R.string.courses_load))
             }
         }
-        when (state) {
-            CoursesState.Idle -> Unit
-            CoursesState.Loading -> {
-                CircularProgressIndicator()
-                Text(stringResource(R.string.courses_loading))
-            }
-            CoursesState.NeedsLogin -> Text(stringResource(R.string.courses_needs_login))
-            is CoursesState.Failed -> Text(stringResource(when (state.reason) {
+        if (state.loading || state.clearing) {
+            CircularProgressIndicator()
+            Text(stringResource(if (state.clearing) R.string.courses_clearing else R.string.courses_loading))
+        }
+        if (state.needsLogin) Text(stringResource(R.string.courses_needs_login))
+        state.error?.let { reason ->
+            Text(stringResource(when (reason) {
                 PortalException.Reason.NETWORK_ERROR -> R.string.courses_network_error
-                PortalException.Reason.STORAGE_ERROR -> R.string.log_cookie_storage_failed
+                PortalException.Reason.STORAGE_ERROR -> R.string.courses_storage_error
                 PortalException.Reason.PARSE_ERROR -> R.string.courses_parse_error
                 else -> R.string.courses_server_error
             }))
-            is CoursesState.Loaded -> {
-                Text(stringResource(
-                    R.string.courses_count,
-                    java.text.NumberFormat.getInstance(java.util.Locale("fa")).format(state.courses.size),
-                ))
-                if (state.courses.isEmpty()) Text(stringResource(R.string.courses_empty))
-                state.courses.forEach { course ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Text(
-                            course.name?.takeIf { it.isNotBlank() }
-                                ?: course.shortName?.takeIf { it.isNotBlank() }
-                                ?: stringResource(R.string.course_unnamed),
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
+        }
+        state.page?.let { page ->
+            if (state.fromCache) Text(stringResource(R.string.courses_cached_note))
+            val lastUpdated = remember(page.lastSuccessEpochSeconds) { formatPersianDateTime(page.lastSuccessEpochSeconds) }
+            Text(stringResource(R.string.courses_last_updated, lastUpdated))
+            Text(stringResource(
+                R.string.courses_count,
+                java.text.NumberFormat.getInstance(java.util.Locale("fa")).format(page.courses.size),
+            ))
+            if (page.courses.isEmpty()) Text(stringResource(R.string.courses_empty))
+            page.courses.forEach { course ->
+                Card(Modifier.fillMaxWidth()) {
+                    Text(
+                        course.name?.takeIf { it.isNotBlank() }
+                            ?: course.shortName?.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.course_unnamed),
+                        modifier = Modifier.padding(16.dp),
+                    )
                 }
             }
         }
@@ -226,12 +239,12 @@ private fun PortalPreview() {
 
 class CoursesPreviewProvider : PreviewParameterProvider<CoursesState> {
     override val values = sequenceOf(
-        CoursesState.Idle,
-        CoursesState.Loading,
-        CoursesState.Loaded(emptyList()),
-        CoursesState.Loaded(listOf(Course("moodle", "1", null, null))),
-        CoursesState.NeedsLogin,
-        CoursesState.Failed(PortalException.Reason.NETWORK_ERROR),
+        CoursesState(),
+        CoursesState(loading = true),
+        CoursesState(page = CachedCoursePage(emptyList(), 1700000000)),
+        CoursesState(page = CachedCoursePage(listOf(Course("moodle", "1", null, null)), 1700000000), fromCache = true),
+        CoursesState(needsLogin = true),
+        CoursesState(error = PortalException.Reason.NETWORK_ERROR),
     )
 }
 
