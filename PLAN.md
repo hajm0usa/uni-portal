@@ -11,16 +11,16 @@ Legend: `[owner]` = needs input or action from the owner; `[agent]` = agent work
 Goal: an empty but real app that builds in GitHub Actions and installs on a phone.
 
 - [x] [owner] Choose app name, `applicationId` (e.g. `ir.example.uniportal`), and a base color for the fixed palette. Confirmed: پرتال دانشگاه, `ir.hajmousa.uniportal`, teal `#006A60`.
-- [x] [agent] Gradle project (Kotlin, Compose BOM, Material 3), `minSdk 26`, `libs.versions.toml` with current stable versions, `supportsRtl=true`, `allowBackup=false`, no cleartext traffic. Written; Android build pending CI.
+- [x] [agent] Gradle project (Kotlin, Compose BOM, Material 3), `minSdk 26`, `libs.versions.toml` with current stable versions, `supportsRtl=true`, `allowBackup=false`, no cleartext traffic. Owner reports GitHub Actions succeeds; the run has not been independently inspected.
 - [x] [agent] Package layout: `core`, `auth`, `data`, `provider.moodle`, `feature`, `widget`, `notify`.
 - [x] [agent] `AppLog` wrapper + hidden in-app log screen (ring buffer, no URLs with query, no tokens/cookies/bodies). Long-press the title; unit tests cover privacy, eviction, snapshots and concurrent writes.
-- [x] [agent] Theme: Material You dynamic color on API 31+, fixed palette below that; Persian font bundled; RTL. On-device verification pending.
+- [x] [agent] Theme: Material You dynamic color on API 31+, fixed palette below that; Persian font bundled; RTL. Owner confirmed the Persian RTL screen works on the phone; API/theme variants are not independently tested.
 - [x] [agent] `.github/workflows/build-apk.yml` (see skill `github-actions-apk`): debug APK artifact on every push; release APK on tag. Written; signed tag builds create a draft release for owner review.
 - [ ] [owner] Add signing secrets to GitHub (see skill) — can wait until the first release.
 
 Done when: CI is green, the debug APK installs, shows a Persian RTL placeholder screen and the hidden log screen.
 
-**Status:** implementation ready for verification, not a completed slice. Gradle wrapper runs; four AppLog unit tests pass via the Kotlin compiler/JUnit directly. Android build attempted but blocked at Google repository plugin resolution; no APK produced, and no local Android SDK or GitHub remote is available. CI, APK installation and phone checks remain pending. Do not start Slice 1 until those checks pass and the owner confirms.
+**Status: complete, owner-confirmed.** The owner reports successful GitHub Actions, APK installation, Persian RTL layout and working hidden logs, and previously requested Slice 1. The run/artifact and phone behavior have not been independently inspected. Gradle wrapper and six JVM unit tests pass locally; the last local Android build stopped at Google repository plugin resolution and produced no local APK. Release signing can wait until the first release. Slice 1 implementation may now begin; do not start Slice 2 without completing Slice 1 and obtaining owner confirmation.
 
 ---
 
