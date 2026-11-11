@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">پرتال دانشگاه</string>
     <string name="placeholder_title">همراه دانشگاه شما</string>
-    <string name="placeholder_body">نسخهٔ اولیه آماده است. ورود به سامانه و نمایش درس‌ها در مرحلهٔ بعد اضافه می‌شود.</string>
+    <string name="placeholder_body">برای دریافت درس‌ها وارد سامانه شوید، یا نشست ذخیره‌شده را بررسی کنید.</string>
     <string name="logs_title">گزارش‌های برنامه</string>
     <string name="logs_open">نمایش گزارش‌های برنامه</string>
     <string name="logs_back">بازگشت</string>
@@ -19,4 +19,17 @@
     <string name="login_failed">ورود کامل نشد. دوباره تلاش کنید.</string>
     <string name="login_success">ورود انجام شد.</string>
     <string name="logout">خروج از حساب</string>
+    <string name="courses_title">درس‌ها</string>
+    <string name="courses_first_page_note">فعلاً فقط صفحهٔ اول درس‌ها نمایش داده می‌شود و نسخهٔ آفلاین ذخیره نمی‌شود.</string>
+    <string name="courses_load">دریافت درس‌ها با نشست ذخیره‌شده</string>
+    <string name="courses_loading">در حال دریافت درس‌ها…</string>
+    <string name="courses_needs_login">نشست معتبر نیست. دوباره وارد سامانه شوید.</string>
+    <string name="courses_network_error">ارتباط برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="courses_parse_error">پاسخ سامانه قابل خواندن نیست. جزئیات خطا در گزارش‌های برنامه ثبت شد.</string>
+    <string name="courses_server_error">دریافت درس‌ها از سامانه ناموفق بود. دوباره تلاش کنید.</string>
+    <string name="courses_count">تعداد درس‌های این صفحه: %1$s</string>
+    <string name="courses_empty">در این صفحه درسی وجود ندارد.</string>
+    <string name="course_unnamed">درس بدون عنوان</string>
+    <string name="log_courses_loaded">صفحهٔ اول درس‌ها دریافت شد</string>
+    <string name="log_course_load_failed">دریافت درس‌ها ناموفق بود</string>
 </resources>
