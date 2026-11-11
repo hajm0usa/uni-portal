@@ -16,13 +16,16 @@ The owner fills this while developing, using the browser DevTools (F12). The age
 
 ## SSO
 
-- Moodle base URL: `TODO`
-- SSO host(s): `TODO`
+- Moodle base URL: `https://elearn.ut.ac.ir/` (confirmed by owner)
+- SSO host(s): `sso1.ut.ac.ir` (confirmed by owner; additional redirect hosts not yet checked)
 - Redirect chain after login (hosts only): `TODO`
 - Login form: plain HTML `<form>` (confirmed by owner). Fields: `TODO`
 - After login the URL carries a one-time ticket (confirmed by owner): parameter name `TODO`
 - Cookies set on the SSO host (name, Expires column, HttpOnly/Secure): `TODO` (owner noted the Expires column says "Session")
-- Cookies set on the Moodle host: `TODO`
+- Cookies observed on the Moodle page (owner supplied; values intentionally omitted):
+  - `MoodleSession`: domain `elearn.ut.ac.ir`, path `/`, expiry `Session`, HttpOnly unchecked, Secure checked (flags confirmed by owner).
+  - `__arcsjs` and `__arcsjsc`: domain `.ut.ac.ir`, path `/`, explicit expiration (persistent cookies). Purpose and originating host are unverified.
+  - HttpOnly / Secure flags for `__arcsjs` and `__arcsjsc`: `TODO` (supplied rows had no headers).
 - Where `sesskey` appears in the HTML (`M.cfg`, logout link): `TODO`
 
 ## Session lifetime tests
@@ -35,9 +38,26 @@ The owner fills this while developing, using the browser DevTools (F12). The age
 
 ## Course list (dashboard)
 
-- Method (`info=`): `TODO` (owner confirmed `core_course_get_enrolled_courses_by_timeline_classification` appears in the requests)
-- Request body: `TODO`
-- Fixture: `app/src/test/resources/fixtures/moodle/courses_ok.json` `TODO`
+- Method (`methodname` in request payload): `core_course_get_enrolled_courses_by_timeline_classification` (confirmed by owner from the dashboard Network request).
+- Observed request `args` (owner supplied; `sort` was visible in the earlier preview):
+  ```json
+  {
+    "offset": 0,
+    "limit": 24,
+    "classification": "all",
+    "sort": "ul.timeaccess desc",
+    "customfieldname": "",
+    "customfieldvalue": ""
+  }
+  ```
+- Full request batch envelope: `TODO`
+- Saved course-list response validated locally: a one-item array containing only boolean `error` (`false`) and `data`. The `data` object contains only `courses` (21 objects) and numeric `nextoffset` (`21`). Pagination/end-of-list semantics remain unverified; a short page alone is not proof of completion.
+- Observed course fields (structure/types only; real course names, identifiers and image content omitted):
+  - Numbers: `id`, `startdate`, `enddate`, `progress`, `summaryformat`.
+  - Strings: `fullname`, `shortname`, `idnumber`, `fullnamedisplay`, `coursecategory`, `courseimage`, `pdfexportfont`, `summary`, `viewurl`.
+  - Booleans: `hasprogress`, `hidden`, `isfavourite`, `showactivitydates`, `showcompletionconditions`, `showshortname`, `visible`.
+  - The earlier Preview image was truncated; the saved response is complete. Original images have not been decoded or copied into the sanitized fixture.
+- Fixture: `app/src/test/resources/fixtures/moodle/courses_ok.json` — sanitized from the owner's complete saved response; preserves all 21 course objects and field types. Names, identifiers, dates, links and images are sample replacements, and progress/favourites are neutralized. See the adjacent fixture README for provenance. JSON/structure/privacy checks passed locally; Kotlin parser tests are still pending.
 
 ## Calendar / action events (deadlines, exams)
 
