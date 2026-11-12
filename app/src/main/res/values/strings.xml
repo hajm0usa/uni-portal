@@ -75,4 +75,12 @@
     <string name="content_downloads_pending">دریافت و باز کردن فایل در برنامه هنوز آماده نیست. فعلاً می‌توانید پوشه را در مرورگر باز کنید.</string>
     <string name="log_content_loaded">محتوای درس یا پوشه دریافت شد</string>
     <string name="log_content_load_failed">دریافت محتوای درس یا پوشه ناموفق بود</string>
+    <string name="download_folder_title">پوشهٔ دریافت فایل‌ها</string>
+    <string name="download_folder_ready">پوشه انتخاب شده و دسترسی خواندن و نوشتن برقرار است.</string>
+    <string name="download_folder_missing">پوشه‌ای در دسترس نیست. پوشه را انتخاب کنید یا دوباره اجازهٔ دسترسی بدهید.</string>
+    <string name="download_folder_restrictions">پوشه‌ای اختصاصی مانند «دانشگاه» بسازید یا انتخاب کنید. در اندروید ۱۱ و بالاتر انتخاب ریشهٔ حافظه و خود پوشهٔ Downloads ممکن نیست. با حذف پوشه یا لغو دسترسی باید دوباره آن را انتخاب کنید.</string>
+    <string name="download_folder_choose">انتخاب پوشه</string>
+    <string name="download_folder_change">تغییر پوشه</string>
+    <string name="download_folder_error">ذخیره یا بررسی دسترسی پوشه ممکن نشد. دوباره تلاش کنید.</string>
+    <string name="log_download_folder_failed">بررسی یا ذخیرهٔ پوشهٔ دریافت ناموفق بود</string>
 </resources>

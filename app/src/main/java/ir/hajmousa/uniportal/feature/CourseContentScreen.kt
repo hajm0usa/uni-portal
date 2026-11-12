@@ -123,6 +123,7 @@ internal fun CourseContentScreen(
                     }
                 }
             } else {
+                item { DownloadFolderCard() }
                 item { Text(stringResource(R.string.content_downloads_pending)) }
                 val files = state.files
                 if (files != null && files.isEmpty()) item { Text(stringResource(R.string.content_folder_empty)) }

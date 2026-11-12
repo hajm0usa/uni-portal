@@ -303,6 +303,7 @@ private fun LogScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
                         AppLog.Event.AGENDA_LOAD_FAILED -> R.string.log_agenda_load_failed
                         AppLog.Event.CONTENT_LOADED -> R.string.log_content_loaded
                         AppLog.Event.CONTENT_LOAD_FAILED -> R.string.log_content_load_failed
+                        AppLog.Event.DOWNLOAD_FOLDER_FAILED -> R.string.log_download_folder_failed
                     }
                     Text(stringResource(label), style = MaterialTheme.typography.titleMedium)
                     entry.diagnostic?.let {
