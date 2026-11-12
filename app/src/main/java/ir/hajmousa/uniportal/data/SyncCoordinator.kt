@@ -18,7 +18,7 @@ class SyncCoordinator internal constructor(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     val session = provider.session.state
-    private val lock get() = locks.getOrPut(provider.id) { Mutex() }
+    private val lock get() = lockFor(provider.id)
 
     suspend fun cached(): SyncSnapshot = lock.withLock {
         SyncSnapshot(courses.cachedFirstPage(), agenda.cachedPreview())
@@ -51,6 +51,7 @@ class SyncCoordinator internal constructor(
 
     companion object {
         private val locks = ConcurrentHashMap<String, Mutex>()
+        internal fun lockFor(providerId: String): Mutex = locks.getOrPut(providerId) { Mutex() }
         fun isStale(lastSuccessEpoch: Long?, nowEpoch: Long): Boolean =
             lastSuccessEpoch == null || nowEpoch < lastSuccessEpoch || nowEpoch - lastSuccessEpoch >= 30 * 60
     }

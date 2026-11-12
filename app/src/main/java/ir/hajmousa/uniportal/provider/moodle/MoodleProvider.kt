@@ -2,6 +2,8 @@ package ir.hajmousa.uniportal.provider.moodle
 
 import ir.hajmousa.uniportal.data.Course
 import ir.hajmousa.uniportal.data.AgendaItem
+import ir.hajmousa.uniportal.data.CourseFile
+import ir.hajmousa.uniportal.data.CourseSection
 import ir.hajmousa.uniportal.data.DataSource
 import ir.hajmousa.uniportal.data.Provider
 import ir.hajmousa.uniportal.data.ProviderSession
@@ -34,5 +36,15 @@ internal class MoodleProvider(private val client: MoodleAjaxClient, private val 
             ).also(session::onFetch)
         }
     }
+
+    // Content sources are opened for a selected course/activity, never enumerated in foreground sync.
+    fun courseContent(courseId: String) = DataSource<CourseSection> {
+        withContext(Dispatchers.IO) { client.fetchCourseContent(courseId).also(session::onFetch) }
+    }
+
+    fun folderFiles(courseId: String, activityId: String) = DataSource<CourseFile> {
+        withContext(Dispatchers.IO) { client.fetchFolderFiles(courseId, activityId).also(session::onFetch) }
+    }
+
     override val sources: List<DataSource<*>> = listOf(courses, agendaPreview)
 }

@@ -4,6 +4,8 @@ import ir.hajmousa.uniportal.auth.SsoHosts
 import ir.hajmousa.uniportal.core.PortalException
 import ir.hajmousa.uniportal.core.PortalException.Reason
 import ir.hajmousa.uniportal.data.AgendaItem
+import ir.hajmousa.uniportal.data.CourseFile
+import ir.hajmousa.uniportal.data.CourseSection
 import java.io.IOException
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
@@ -61,6 +63,28 @@ internal class MoodleAjaxClient(
         // shortcut: one observed six-event page, add pagination only after its protocol is verified.
         val request = """[{"index":0,"methodname":"$CALENDAR_METHOD","args":{"limitnum":6,"limittononsuspendedevents":true,"timesortfrom":$fromEpoch,"timesortto":$toEpoch}}]"""
         return withSession { key -> MoodleParsers.parseAgenda(readAjax(key, CALENDAR_METHOD, request)) }
+    }
+
+    fun fetchCourseContent(courseId: String): Result<List<CourseSection>> {
+        if (!validId(courseId)) return Result.failure(PortalException(Reason.PARSE_ERROR))
+        return withSession { _ ->
+            MoodleContentParsers.parseCourse(readPage("/course/view.php", courseId), courseId)
+        }
+    }
+
+    fun fetchFolderFiles(courseId: String, activityId: String): Result<List<CourseFile>> {
+        if (!validId(courseId) || !validId(activityId)) return Result.failure(PortalException(Reason.PARSE_ERROR))
+        return withSession { _ ->
+            MoodleContentParsers.parseFolder(readPage("/mod/folder/view.php", activityId), courseId, activityId)
+        }
+    }
+
+    private fun validId(value: String): Boolean = value.toLongOrNull()?.let { it > 0 && it.toString() == value } == true
+
+    private fun readPage(path: String, id: String): String {
+        val url = baseUrl.newBuilder().encodedPath(path).query(null).fragment(null)
+            .addQueryParameter("id", id).build()
+        return read(Request.Builder().url(url).build(), json = false)
     }
 
     private fun <T> withSession(fetch: (String) -> Result<T>): Result<T> {

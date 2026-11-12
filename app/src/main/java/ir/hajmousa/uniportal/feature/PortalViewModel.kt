@@ -6,6 +6,7 @@ import ir.hajmousa.uniportal.core.PortalException
 import ir.hajmousa.uniportal.data.CachedAgendaPreview
 import ir.hajmousa.uniportal.data.CachedCoursePage
 import ir.hajmousa.uniportal.data.ProviderSession
+import ir.hajmousa.uniportal.data.PortalRepositories
 import ir.hajmousa.uniportal.data.SyncCoordinator
 import ir.hajmousa.uniportal.data.SyncSnapshot
 import java.time.Clock
@@ -30,13 +31,20 @@ data class PortalState(
 )
 
 // Today and Calendar share the same preview and refresh/account-transition lifecycle.
-class PortalViewModel(private val sync: SyncCoordinator, private val clock: Clock = Clock.systemUTC()) : ViewModel() {
+class PortalViewModel(val repositories: PortalRepositories, private val clock: Clock = Clock.systemUTC()) : ViewModel() {
+    private val sync = repositories.sync
     private val mutableState = MutableStateFlow(PortalState())
     val state = mutableState.asStateFlow()
     private var work: Job? = null
     private var restored = false
 
     init {
+        viewModelScope.launch {
+            sync.session.collect { session ->
+                mutableState.value = state.value.copy(needsLogin = session == ProviderSession.State.NeedsLogin,
+                    authenticated = session == ProviderSession.State.Active)
+            }
+        }
         work = viewModelScope.launch {
             apply(withContext(Dispatchers.IO) { sync.cached() })
             restored = true

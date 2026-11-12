@@ -60,4 +60,19 @@
     <string name="agenda_event">رویداد</string>
     <string name="log_agenda_loaded">پیش‌نمایش رویدادها دریافت شد</string>
     <string name="log_agenda_load_failed">دریافت پیش‌نمایش رویدادها ناموفق بود</string>
+    <string name="content_open_course">نمایش محتوای درس</string>
+    <string name="content_open_folder">نمایش فایل‌های پوشه</string>
+    <string name="content_empty">در این صفحه بخشی برای نمایش وجود ندارد.</string>
+    <string name="content_section_empty">این بخش فعالیتی ندارد.</string>
+    <string name="content_folder_empty">در این پوشه فایلی وجود ندارد.</string>
+    <string name="content_memory_note">این صفحه فعلاً فقط در حافظهٔ برنامه نگه داشته می‌شود. پس از بسته شدن برنامه برای دریافت دوباره اینترنت لازم است.</string>
+    <string name="content_stale_note">آخرین محتوای دریافت‌شده نمایش داده می‌شود و ممکن است به‌روز نباشد.</string>
+    <string name="content_browser">باز کردن در مرورگر</string>
+    <string name="content_browser_only">نمایش بومی این فعالیت هنوز پشتیبانی نمی‌شود.</string>
+    <string name="content_browser_login_note">مرورگر از نشست جداگانه استفاده می‌کند و ممکن است دوباره ورود بخواهد.</string>
+    <string name="content_browser_failed">باز کردن مرورگر ممکن نشد یا پیوند امن نیست.</string>
+    <string name="content_server_error">دریافت محتوای درس ناموفق بود. دوباره تلاش کنید.</string>
+    <string name="content_downloads_pending">دریافت و باز کردن فایل در برنامه هنوز آماده نیست. فعلاً می‌توانید پوشه را در مرورگر باز کنید.</string>
+    <string name="log_content_loaded">محتوای درس یا پوشه دریافت شد</string>
+    <string name="log_content_load_failed">دریافت محتوای درس یا پوشه ناموفق بود</string>
 </resources>

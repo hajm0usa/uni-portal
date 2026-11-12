@@ -41,14 +41,20 @@ class PortalViewModelTest {
     fun start() {
         Dispatchers.setMain(dispatcher)
         server = MockWebServer().apply { start() }
+        createDefaultModel()
+    }
+
+    private fun createDefaultModel() {
         val provider = MoodleProvider(MoodleAjaxClient(CookieJar.NO_COOKIES, "UniPortal/test", server.url("/"), 0), clock)
         createModel(provider, provider.courses, provider.agendaPreview)
     }
 
     private fun createModel(provider: Provider, courses: DataSource<Course>, agenda: DataSource<AgendaItem>) {
         store.clear()
-        model = PortalViewModel(SyncCoordinator(provider, CourseRepository(provider, courses, dao, clock),
-            AgendaRepository(provider, agenda, agendaDao, clock), clock), clock)
+        val sync = SyncCoordinator(provider, CourseRepository(provider, courses, dao, clock), AgendaRepository(provider, agenda, agendaDao, clock), clock)
+        val content = CourseContentRepository(provider, { DataSource { Result.success(emptyList()) } },
+            { _, _ -> DataSource { Result.success(emptyList()) } })
+        model = PortalViewModel(PortalRepositories(sync, content), clock)
         store.put("portal", model)
     }
 
@@ -58,6 +64,7 @@ class PortalViewModelTest {
     @Test
     fun `startup restores cache without networking and manual refresh loads both sections once`() = runTest(dispatcher) {
         agendaDao.replacePreview("moodle", listOf(old), 123)
+        createDefaultModel()
         val restored = model.state.first { !it.loading }
         assertEquals(listOf(old), restored.agenda!!.items)
         assertEquals(0, server.requestCount)
@@ -78,6 +85,7 @@ class PortalViewModelTest {
     fun `foreground freshness check leaves recent cache alone and refresh errors retain saved data`() = runTest(dispatcher) {
         dao.replacePage("moodle", emptyList(), 1700000000)
         agendaDao.replacePreview("moodle", listOf(old), 1700000000)
+        createDefaultModel()
         model.state.first { !it.loading }
         model.refresh()
         model.state.first { !it.loading }
@@ -95,6 +103,7 @@ class PortalViewModelTest {
     @Test
     fun `expiry retains content needs login and does not automatically retry on later foregrounds`() = runTest(dispatcher) {
         agendaDao.replacePreview("moodle", listOf(old), 123)
+        createDefaultModel()
         model.state.first { !it.loading }
         server.enqueue(MockResponse(body = "<html>Synthetic login</html>"))
         model.refresh()
@@ -110,6 +119,7 @@ class PortalViewModelTest {
     fun `account clearing immediately hides both sections and blocks login on storage failure`() = runTest(dispatcher) {
         dao.replacePage("moodle", listOf(Course("moodle", "1", "Sample", null)), 123)
         agendaDao.replacePreview("moodle", listOf(old), 123)
+        createDefaultModel()
         model.state.first { !it.loading }
         dao.failStorage = true
         var opened = false
