@@ -83,4 +83,20 @@
     <string name="download_folder_change">تغییر پوشه</string>
     <string name="download_folder_error">ذخیره یا بررسی دسترسی پوشه ممکن نشد. دوباره تلاش کنید.</string>
     <string name="log_download_folder_failed">بررسی یا ذخیرهٔ پوشهٔ دریافت ناموفق بود</string>
+    <string name="home_account">حساب کاربری</string>
+    <string name="home_featured">نزدیک‌ترین مهلت</string>
+    <string name="home_upcoming">پیشِ رو</string>
+    <string name="home_tomorrow">فردا</string>
+    <string name="home_view_calendar">مشاهده تقویم</string>
+    <string name="home_view_all">مشاهده همه</string>
+    <string name="home_details">مشاهده جزئیات</string>
+    <string name="home_at_time">ساعت %1$s</string>
+    <string name="home_due_today">تا امشب</string>
+    <string name="home_updated">آخرین به‌روزرسانی: %1$s</string>
+    <string name="home_refreshing">در حال به‌روزرسانی…</string>
+    <string name="home_stale">اطلاعات نیاز به تازه‌سازی دارد</string>
+    <string name="home_sign_in">برای تازه‌سازی، وارد سامانه شوید</string>
+    <string name="home_empty">رویدادی در پیش‌نمایش ذخیره‌شده نیست</string>
+    <string name="home_empty_hint">برای بررسی سایر فعالیت‌ها، به درس‌ها سر بزنید.</string>
+    <string name="home_agenda_scope">رویدادهای بازهٔ هفت‌روزهٔ آخرین دریافت؛ این فهرست هنوز کامل نیست.</string>
 </resources>

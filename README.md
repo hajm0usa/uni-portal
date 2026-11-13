@@ -2,6 +2,25 @@
 
 Personal, read-only Android client for a Moodle-based university portal. Persian / RTL, Android 8+ (API 26). See [PLAN.md](PLAN.md) for the slice boundaries and [AGENTS.md](AGENTS.md) for the project rules.
 
+## Home redesign — approved, native implementation awaiting verification
+
+[Open the browser prototype](docs/design/home/index.html) or see its
+[preview instructions](docs/design/home/README.md). Persian RTL, light/dark
+themes, real variable font weights, and six sample data states. This is a design
+reference using fictional data. The owner approved it, and native Home now follows
+that layout: transparent logo, nearest deadline without duplication, grouped
+events, course shortcuts, and a compact account menu. Existing authentication,
+cache clearing, sync and diagnostics are preserved. Native layout/device checks
+and the APK build remain unverified; the local build still cannot resolve AGP.
+All app Kotlin sources, including Compose, compile in an isolated Android-API
+harness with the Compose compiler and generated R/BuildConfig stand-ins. That
+does not verify Android resources, KSP output, manifest merging, packaging or
+runtime behavior; the app's build repositories and dependencies are unchanged.
+
+Home adds no UI event count cap. Fetching **all** live events still needs confirmed
+pagination; the source currently requests six and native Home explicitly says the
+feed is incomplete. Design approval does not change that server-data limitation.
+
 ## Current scope: Slice 3 — course/folder screens (downloads pending)
 
 - Native Today, Courses and Calendar agenda tabs; Grades/Messages are coming-soon cards. Teal light/dark fallback and wallpaper colors on Android 12+.
@@ -62,7 +81,13 @@ Versions were checked on 2026-11-11, adding only dependencies needed for this sl
 - Lifecycle ViewModel/Compose `2.11.0`: latest non-prerelease in [Google metadata mirror](https://maven.aliyun.com/repository/google/androidx/lifecycle/lifecycle-viewmodel-compose/maven-metadata.xml). Coroutines Android/test `1.11.0`: stable [Maven Central metadata](https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-android/maven-metadata.xml). These support lifecycle-owned off-main-thread loading and state collection.
 - Room `2.8.5`: stable [Google metadata mirror](https://maven.aliyun.com/repository/google/androidx/room/room-runtime/maven-metadata.xml). KSP `2.3.13`: stable [Maven Central metadata](https://repo.maven.apache.org/maven2/com/google/devtools/ksp/symbol-processing-gradle-plugin/maven-metadata.xml). An isolated JVM build successfully generated and compiled the database/DAO with the same Kotlin/KSP/Room versions; schema version 1 is checked in. Robolectric `4.17`: latest stable [Maven Central metadata](https://repo.maven.apache.org/maven2/org/robolectric/robolectric/maven-metadata.xml), test-only for actual database and Android ICU checks.
 - kotlinx.serialization JSON `1.12.0`: [Maven Central metadata](https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-serialization-json/maven-metadata.xml) and [official release notes](https://github.com/Kotlin/kotlinx.serialization/releases/tag/v1.12.0), checked before adding it for Slice 1. The release targets Kotlin 2.4.10 and is used with the project's Kotlin/compiler plugin 2.4.21.
-- Vazirmatn regular/bold, unmodified, from [upstream v33.003](https://github.com/rastikerdar/vazirmatn/tree/v33.003), license in `app/src/main/assets/licenses/vazirmatn-OFL.txt`.
+- Vazirmatn regular/medium/semibold/bold, unmodified, from [upstream v33.003](https://github.com/rastikerdar/vazirmatn/tree/v33.003), license in `app/src/main/assets/licenses/vazirmatn-OFL.txt`. Medium and semibold were added for the approved Home hierarchy; their SHA-256 values are `b986623e4ddef10755e04be39f8ea7bcb1dc08bfe8dd0aa6af395736f256ad4a` and `3f239d8364c14ee32c46b6839fa197c28958358b82a9673d2c6acc8506d78bc5` respectively.
+
+Latest Home regression check: **127 lightweight JVM tests** and the Node SSO
+checks pass. Six new tests cover deadline selection, grouping, provider identity,
+no UI truncation and Tehran date boundaries. There are **146 test declarations**;
+19 Android-backed tests, including the new Persian Home date/time test, remain
+unverified. Earlier counts below describe the previous slices' verification.
 
 `MoodleProvider` registers the course `DataSource`, which returns only shared models. Each provider has its own session StateFlow: Unknown until a successful fetch, Active after success, NeedsLogin on session expiry. Other errors do not reset it or sign other providers out. The repository restores persisted login requirements (including before any successful cache), and uses a coroutine Mutex to serialize refreshes with account-change clearing. The ViewModel still offers re-login if saving the expiry error fails.
 

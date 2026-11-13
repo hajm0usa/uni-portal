@@ -2,6 +2,8 @@ package ir.hajmousa.uniportal.core.time
 
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -19,5 +21,18 @@ class PersianDateTimeTest {
     @Test
     fun `Persian leap-year final day formats correctly`() {
         assertEquals("۱۴۰۳/۱۲/۳۰ ۰۰:۰۰", formatPersianDateTime(Instant.parse("2025-03-19T20:30:00Z").epochSecond))
+    }
+
+    @Test
+    fun `Home date and time use Persian calendar digits and Tehran midnight`() {
+        val midnight = Instant.parse("2026-11-13T20:30:00Z").epochSecond
+        assertEquals("۰۰:۰۰", formatPersianTime(midnight))
+        assertEquals("۲۳:۵۹", formatPersianTime(midnight - 60))
+        val day = formatPersianDay(midnight)
+        assertTrue(day.contains("شنبه"))
+        assertTrue(day.contains("۲۳"))
+        assertTrue(day.contains("آبان"))
+        assertTrue(day.contains("۱۴۰۵"))
+        assertFalse(day.any { it in '0'..'9' })
     }
 }

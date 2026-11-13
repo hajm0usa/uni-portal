@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
@@ -117,6 +118,29 @@ fun PortalApp() {
             showLogin = true
         }
     }
+    val canSignOut = signedIn || coursesState.page != null || state.agenda != null || hasSavedCredentials || credentialStorageError
+    val signOut: () -> Unit = {
+        automaticLoginUsed = true
+        scope.launch {
+            // Finish local deletion even if the UI is recreated during logout.
+            withContext(NonCancellable) {
+                signingOut = true
+                signedOut = true
+                contentModel.stopAndClear()
+                model.stopRefresh()
+                val cleared = session.signOut()
+                signedIn = false
+                hasSavedCredentials = false
+                credentialStorageError = !cleared
+                model.clearForAccountChange {}
+                signingOut = false
+            }
+        }
+    }
+    val openLogs: () -> Unit = {
+        AppLog.record(AppLog.Event.LOG_SCREEN_OPENED)
+        showLogs = true
+    }
     LaunchedEffect(session) {
         val stored = withContext(Dispatchers.IO) { session.credentials.read().map { it != null } }
         hasSavedCredentials = stored.getOrDefault(false)
@@ -154,11 +178,12 @@ fun PortalApp() {
     BackHandler(enabled = inContent && !showLogs && !showLogin) { contentModel.back() }
 
     Scaffold(bottomBar = {
-        if (!showLogin && !showLogs && !inContent) NavigationBar {
+        if (!showLogin && !showLogs && !inContent) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
             PortalTab.entries.forEach { item ->
                 NavigationBarItem(selected = tab == item, onClick = { tab = item },
                     icon = { Icon(painterResource(item.icon), contentDescription = null) },
-                    label = { Text(stringResource(item.title)) })
+                    label = { Text(stringResource(item.title), style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (tab == item) FontWeight.SemiBold else FontWeight.Normal) })
             }
         }
     }) { padding ->
@@ -184,6 +209,13 @@ fun PortalApp() {
             CourseContentScreen(contentState.copy(needsLogin = needsLogin || contentState.needsLogin), Modifier.padding(padding),
                 onBack = contentModel::back, onRefresh = contentModel::refresh,
                 onFolder = contentModel::openFolder, onSignIn = openLogin)
+        } else if (tab == PortalTab.TODAY) {
+            TodayScreen(state, Modifier.padding(padding), enabled = !signingOut,
+                signedIn = signedIn, canSignOut = canSignOut, loginFailed = loginFailed,
+                credentialStorageError = credentialStorageError,
+                onRefresh = { model.refresh(force = true) }, onSignIn = openLogin, onSignOut = signOut,
+                onShowLogs = openLogs, onCalendar = { tab = PortalTab.CALENDAR }, onCourses = { tab = PortalTab.COURSES },
+                onOpenCourse = contentModel::openCourse)
         } else {
             val scroll = rememberScrollState()
             LaunchedEffect(tab) { scroll.scrollTo(0) }
@@ -202,10 +234,7 @@ fun PortalApp() {
                     modifier = Modifier.fillMaxWidth().combinedClickable(
                         onClick = {},
                         onLongClickLabel = stringResource(R.string.logs_open),
-                        onLongClick = {
-                            AppLog.record(AppLog.Event.LOG_SCREEN_OPENED)
-                            showLogs = true
-                        },
+                        onLongClick = openLogs,
                     ).padding(vertical = 12.dp),
                 )
                 Card(Modifier.fillMaxWidth()) {
@@ -223,25 +252,8 @@ fun PortalApp() {
                             },
                         )
                         if (credentialStorageError) Text(stringResource(R.string.credentials_storage_error))
-                        if (signedIn || coursesState.page != null || state.agenda != null || hasSavedCredentials || credentialStorageError) {
-                            TextButton(enabled = !loading && !signingOut, onClick = {
-                                automaticLoginUsed = true
-                                scope.launch {
-                                    // Finish local deletion even if the UI is recreated during logout.
-                                    withContext(NonCancellable) {
-                                        signingOut = true
-                                        signedOut = true
-                                        contentModel.stopAndClear()
-                                        model.stopRefresh()
-                                        val cleared = session.signOut()
-                                        signedIn = false
-                                        hasSavedCredentials = false
-                                        credentialStorageError = !cleared
-                                        model.clearForAccountChange {}
-                                        signingOut = false
-                                    }
-                                }
-                            }) { Text(stringResource(R.string.logout)) }
+                        if (canSignOut) {
+                            TextButton(enabled = !loading && !signingOut, onClick = signOut) { Text(stringResource(R.string.logout)) }
                         }
                         if (!signedIn || needsLogin) {
                             Button(enabled = !loading && !signingOut, onClick = openLogin) { Text(stringResource(R.string.login_open)) }

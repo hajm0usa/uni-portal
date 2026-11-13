@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <title>پیش‌نمایش امروز — پرتال دانشگاه</title>
+  <link rel="stylesheet" href="home.css">
+  <script src="home.js" defer></script>
+  <script src="home.test.js" defer></script>
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+      <symbol id="moon" viewBox="0 0 24 24"><path d="M20.5 13.4A8.8 8.8 0 0 1 10.6 3.5a8.8 8.8 0 1 0 9.9 9.9Z"/></symbol>
+      <symbol id="arrow" viewBox="0 0 24 24"><path d="M19 12H5m6-6-6 6 6 6"/></symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.7 7a7 7 0 0 1 11.6-1L20 9M4 15l2.7 3A7 7 0 0 0 18.3 17"/></symbol>
+      <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M7.5 3v4m9-4v4M4 10h16M8 14h2m4 0h2m-8 3h2"/></symbol>
+      <symbol id="courses" viewBox="0 0 24 24"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"/></symbol>
+      <symbol id="grades" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 3h6M9 16v-3m3 3V9m3 7v-5"/></symbol>
+      <symbol id="messages" viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H9l-5 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z"/><path d="M8 9h8m-8 4h5"/></symbol>
+      <symbol id="document" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Zm0 0v6h6M8 13h8m-8 4h5"/></symbol>
+      <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.5"/></symbol>
+      <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="physics" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(55 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-55 12 12)"/><circle cx="12" cy="12" r="1.5"/></symbol>
+    </defs>
+  </svg>
+
+  <main class="studio">
+    <aside class="review" aria-label="کنترل‌های پیش‌نمایش">
+      <div class="review-heading">
+        <span class="eyebrow">پرتال دانشگاه <span class="tiny-line"></span> طراحی ۰۱</span>
+        <h1>روزت، کمی<br>مرتب‌تر.</h1>
+        <p class="intro">اول آنچه نزدیک‌تر است؛<br>بعد، باقی روزهای دانشگاه.</p>
+      </div>
+      <div class="controls">
+        <div class="control-row">
+          <label for="preview-state">وضعیت صفحه</label>
+          <select id="preview-state">
+            <option value="content">محتوا</option>
+            <option value="loading">در حال به‌روزرسانی</option>
+            <option value="empty">بدون رویداد</option>
+            <option value="stale">اطلاعات قدیمی</option>
+            <option value="login">نیاز به ورود</option>
+            <option value="error">خطای رویدادها</option>
+          </select>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">
+          <svg class="icon" aria-hidden="true"><use id="theme-icon" href="#moon"/></svg>
+          <span id="theme-label">نمای تیره</span>
+        </button>
+      </div>
+      <div class="design-notes">
+        <p class="notes-title">کمتر شلوغ، بیشتر خوانا</p>
+        <ul>
+          <li>وزن و رنگ متن، متناسب با اهمیت محتوا</li>
+          <li>مهلت نزدیک، بدون تکرار در فهرست</li>
+          <li>رنگ سبز برای مسیرها و عمل‌ها</li>
+        </ul>
+        <p class="prototype-note"><span class="sample-dot"></span> پیش‌نمایش طراحی · تمام اطلاعات نمونه‌اند.<br>هیچ اتصالی به حساب یا سامانهٔ دانشگاه ندارد.</p>
+      </div>
+    </aside>
+
+    <section class="device" aria-label="پیش‌نمایش صفحهٔ امروز">
+      <div class="device-scroll" id="device-scroll">
+        <header class="app-header">
+          <div class="brand">
+            <span class="logo"><img src="../../../app/src/main/res/drawable-nodpi/tehran_university.png" alt="نشان دانشگاه تهران" width="32" height="36"></span>
+            <span>پرتال دانشگاه</span>
+          </div>
+          <button class="icon-button" id="refresh" type="button" aria-label="به‌روزرسانی نمای نمونه">
+            <svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>
+          </button>
+        </header>
+
+        <div class="home-content">
+          <div class="page-heading">
+            <div><h2>امروز</h2><p class="date">جمعه، ۲۲ آبان ۱۴۰۵</p></div>
+            <span class="day-mark" aria-hidden="true"><svg class="icon"><use href="#sun"/></svg></span>
+          </div>
+          <p class="sync-status" id="sync-status" role="status"><span class="status-dot"></span><span id="sync-label">آخرین به‌روزرسانی: ۱۰:۳۰</span></p>
+
+          <div class="state-banner" id="state-banner" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#info"/></svg>
+            <div><p id="banner-title"></p><p id="banner-description"></p><button class="text-button" id="banner-action" type="button">تلاش دوباره</button></div>
+          </div>
+
+          <section class="featured" id="featured" aria-labelledby="featured-label">
+            <div class="featured-label" id="featured-label"><svg class="icon" aria-hidden="true"><use href="#clock"/></svg>نزدیک‌ترین مهلت</div>
+            <h3>تمرین دوم؛ مشتق و کاربردها</h3>
+            <p class="course-context">ریاضی عمومی</p>
+            <div class="deadline"><span class="deadline-day">امروز</span><span class="deadline-time">ساعت <bdi>۲۳:۵۹</bdi></span><span class="due-tag">تا امشب</span></div>
+            <button class="featured-action" type="button" data-event="featured">مشاهده جزئیات<svg class="icon" aria-hidden="true"><use href="#arrow"/></svg></button>
+          </section>
+
+          <section class="upcoming" id="upcoming" aria-labelledby="upcoming-title">
+            <div class="section-heading"><h3 id="upcoming-title">پیشِ رو</h3><button class="text-button" type="button" data-destination="تقویم">مشاهده تقویم<svg class="icon small" aria-hidden="true"><use href="#arrow"/></svg></button></div>
+            <div class="event-group">
+              <h4>فردا <span>۲۳ آبان</span></h4>
+              <button class="event-row" type="button" data-event="lab">
+                <span class="event-icon"><svg class="icon" aria-hidden="true"><use href="#document"/></svg></span>
+                <span class="event-copy"><span class="event-title">گزارش آزمایشگاه دوم</span><span class="event-course">فیزیک</span></span>
+                <bdi class="event-time">۱۸:۰۰</bdi>
+              </button>
+            </div>
+            <div class="event-group">
+              <h4>یکشنبه <span>۲۴ آبان</span></h4>
+              <button class="event-row" type="button" data-event="code">
+                <span class="event-icon"><svg class="icon" aria-hidden="true"><use href="#document"/></svg></span>
+                <span class="event-copy"><span class="event-title">تمرین سوم؛ حلقه‌ها</span><span class="event-course">مبانی برنامه‌نویسی</span></span>
+                <bdi class="event-time">۲۳:۵۹</bdi>
+              </button>
+            </div>
+          </section>
+
+          <section class="empty-state" id="empty-state" aria-labelledby="empty-title" hidden>
+            <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#calendar"/></svg></span>
+            <h3 id="empty-title">رویدادی در این بازه نیست</h3>
+            <p>برای بررسی سایر فعالیت‌ها، به درس‌ها سر بزنید.</p>
+          </section>
+
+          <p class="agenda-scope"><svg class="icon" aria-hidden="true"><use href="#calendar"/></svg>رویدادهای ۷ روز آینده</p>
+
+          <section class="courses-section" aria-labelledby="courses-title">
+            <div class="section-heading"><h3 id="courses-title">درس‌ها</h3><button class="text-button" type="button" data-destination="درس‌ها">مشاهده همه<svg class="icon small" aria-hidden="true"><use href="#arrow"/></svg></button></div>
+            <div class="course-grid">
+              <button class="course-tile" type="button" data-course="ریاضی عمومی"><span class="course-symbol math" aria-hidden="true">ƒ</span><span class="course-name">ریاضی عمومی</span><span class="course-link">محتوای درس<svg class="icon small" aria-hidden="true"><use href="#arrow"/></svg></span></button>
+              <button class="course-tile" type="button" data-course="فیزیک"><span class="course-symbol science" aria-hidden="true"><svg class="icon"><use href="#physics"/></svg></span><span class="course-name">فیزیک</span><span class="course-link">محتوای درس<svg class="icon small" aria-hidden="true"><use href="#arrow"/></svg></span></button>
+            </div>
+          </section>
+          <p class="sample-caption">اطلاعات نمونه · صرفاً برای بررسی طراحی</p>
+        </div>
+      </div>
+
+      <nav class="bottom-nav" aria-label="بخش‌های برنامه">
+        <button class="nav-item active" type="button" aria-current="page" id="home-tab"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#sun"/></svg></span><span>امروز</span></button>
+        <button class="nav-item" type="button" data-destination="درس‌ها"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#courses"/></svg></span><span>درس‌ها</span></button>
+        <button class="nav-item" type="button" data-destination="تقویم"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#calendar"/></svg></span><span>تقویم</span></button>
+        <button class="nav-item" type="button" data-destination="نمره‌ها"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#grades"/></svg></span><span>نمره‌ها</span></button>
+        <button class="nav-item" type="button" data-destination="پیام‌ها"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#messages"/></svg></span><span>پیام‌ها</span></button>
+      </nav>
+    </section>
+  </main>
+
+  <dialog id="detail-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-description">
+    <div class="dialog-heading"><span class="eyebrow">پیش‌نمایش طراحی</span><button class="icon-button" id="close-dialog" type="button" aria-label="بستن"><svg class="icon" aria-hidden="true"><use href="#close"/></svg></button></div>
+    <h2 id="dialog-title"></h2><p id="dialog-context"></p><p id="dialog-description"></p>
+    <form method="dialog"><button class="dialog-done" type="submit">بازگشت به امروز</button></form>
+  </dialog>
+  <noscript><p class="noscript">برای تغییر پوسته و وضعیت‌های نمونه، جاوااسکریپت را فعال کنید.</p></noscript>
+</body>
+</html>

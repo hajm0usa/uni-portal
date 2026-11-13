@@ -105,6 +105,15 @@ Done when: Today and Calendar work from real data and from Room offline.
   - Decision #27 authorizes ETag/Last-Modified conditional refresh when Moodle `timemodified` is unavailable. With no validators, retain a complete existing copy until explicit re-download; missing/partial local files require full download. No background file polling, and no replacement of the last good copy before a new download succeeds.
 - [ ] [agent] Open file via `FileProvider`/content URI, "share" action, handle "file no longer exists" -> state reset.
 
+### Owner-approved Home redesign (within the current slice)
+
+- [x] Owner reviewed and approved the Persian RTL browser prototype in `docs/design/home/`, including transparent logo, proportional text weights/colors, light/dark themes, and removal of the six-event cap from the design target.
+- [x] Native Home implementation: compact brand/refresh/account header; Jalali date; nearest future assignment deadline, shown only once; date-grouped remaining events without a UI count cap; two course shortcuts and links to existing Courses/Calendar routes. Sign-in/out and diagnostics remain reachable. Empty/loading/stale/section-error/login states preserve the existing cached-data/account-clear boundaries. Real medium/semibold font files are bundled under the existing font license. No backend, authentication, Room, sync-policy or download changes.
+- [x] Six focused JVM tests cover nearest-deadline selection, same-title events, more than six events, overdue-today retention, Tehran midnight, provider-scoped identity and empty/non-deadline feeds. All 127 lightweight JVM tests and the Node SSO checks pass. XML/string checks pass.
+- [x] All app Kotlin sources, including the new Home, root routing and theme, compile in an isolated JVM harness with the Compose compiler and Android API jar. Generated R/BuildConfig stand-ins replace Android resource generation there; this is not AGP/KSP/resource-linking/manifest/APK or Android-runtime verification. No harness repository/dependency workarounds were added to the app build.
+- [ ] Full-event fetching remains blocked on verified calendar pagination/termination. The native Home has no additional event cap but keeps a truthful incomplete-feed notice; the server source still requests six. Do not imply that approving the visual design proves complete data or silently invent pagination.
+- [ ] CI APK and device verification: font weights, RTL/large-text layout, dark/dynamic themes, navigation, safe event/browser dialogs, refresh, account menu and recovery paths. There are now 146 JVM test declarations; 19 Android-backed tests (including a new Home date/time test) remain unverified. Local Android build still fails resolving AGP 9.5.1.
+
 Done when: a PDF downloads into the chosen folder, opens, survives app restart, and a deleted file is detected when opened.
 
 ---

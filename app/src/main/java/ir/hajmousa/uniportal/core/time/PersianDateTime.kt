@@ -10,6 +10,10 @@ fun formatPersianDateTime(epochSeconds: Long): String = format(epochSeconds, "yy
 
 fun formatPersianDate(epochSeconds: Long): String = format(epochSeconds, "yyyy/MM/dd")
 
+fun formatPersianDay(epochSeconds: Long): String = format(epochSeconds, "EEEE، d MMMM yyyy")
+
+fun formatPersianTime(epochSeconds: Long): String = format(epochSeconds, "HH:mm")
+
 private fun format(epochSeconds: Long, pattern: String): String =
     SimpleDateFormat(pattern, ULocale("fa_IR@calendar=persian")).apply {
         timeZone = TimeZone.getTimeZone(ZoneId.of("Asia/Tehran").id)
