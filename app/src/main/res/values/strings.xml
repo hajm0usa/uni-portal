@@ -65,7 +65,7 @@
     <string name="content_empty">در این صفحه بخشی برای نمایش وجود ندارد.</string>
     <string name="content_section_empty">این بخش فعالیتی ندارد.</string>
     <string name="content_folder_empty">در این پوشه فایلی وجود ندارد.</string>
-    <string name="content_memory_note">این صفحه فعلاً فقط در حافظهٔ برنامه نگه داشته می‌شود. پس از بسته شدن برنامه برای دریافت دوباره اینترنت لازم است.</string>
+    <string name="content_cache_note">فهرست بخش‌ها و فایل‌های بازشده برای نمایش آفلاین ذخیره می‌شود؛ خود فایل‌ها هنوز دریافت نمی‌شوند.</string>
     <string name="content_stale_note">آخرین محتوای دریافت‌شده نمایش داده می‌شود و ممکن است به‌روز نباشد.</string>
     <string name="content_browser">باز کردن در مرورگر</string>
     <string name="content_browser_only">نمایش بومی این فعالیت هنوز پشتیبانی نمی‌شود.</string>

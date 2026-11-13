@@ -53,7 +53,7 @@ class PortalViewModelTest {
         store.clear()
         val sync = SyncCoordinator(provider, CourseRepository(provider, courses, dao, clock), AgendaRepository(provider, agenda, agendaDao, clock), clock)
         val content = CourseContentRepository(provider, { DataSource { Result.success(emptyList()) } },
-            { _, _ -> DataSource { Result.success(emptyList()) } })
+            { _, _ -> DataSource { Result.success(emptyList()) } }, MemoryCourseContentDao(dao), clock)
         model = PortalViewModel(PortalRepositories(sync, content), clock)
         store.put("portal", model)
     }

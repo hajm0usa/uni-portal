@@ -65,26 +65,42 @@ class CourseContentViewModel(private val repository: CourseContentRepository, pr
 
     fun resume() {
         mutableState.value = state.value.copy(nowEpoch = clock.instant().epochSecond)
-        val updated = if (state.value.folder == null) state.value.sectionsUpdatedEpoch else state.value.filesUpdatedEpoch
-        if (SyncCoordinator.isStale(updated, clock.instant().epochSecond)) refresh()
+        load(force = false)
     }
 
-    fun refresh() {
+    fun refresh() = load(force = true)
+
+    private fun load(force: Boolean) {
         val current = state.value
         val course = current.course ?: return
         if (current.loading) return
         mutableState.value = current.copy(loading = true, error = null, nowEpoch = clock.instant().epochSecond)
         work = viewModelScope.launch {
             try {
+                val cached = if (current.folder == null) {
+                    withContext(Dispatchers.IO) { repository.cachedSections(course.remoteId) }.map { page ->
+                        page?.let { state.value.copy(sections = it.items, sectionsUpdatedEpoch = it.lastSuccessEpochSeconds, error = it.lastError) }
+                    }
+                } else {
+                    withContext(Dispatchers.IO) { repository.cachedFiles(course.remoteId, current.folder.remoteId) }.map { page ->
+                        page?.let { state.value.copy(files = it.items, filesUpdatedEpoch = it.lastSuccessEpochSeconds, error = it.lastError) }
+                    }
+                }
+                cached.getOrNull()?.let { mutableState.value = it }
+                mutableState.value = state.value.copy(needsLogin = repository.session.value == ProviderSession.State.NeedsLogin,
+                    error = if (cached.isFailure) PortalException.Reason.STORAGE_ERROR else state.value.error)
+                if (state.value.needsLogin) return@launch
+                val updated = if (current.folder == null) state.value.sectionsUpdatedEpoch else state.value.filesUpdatedEpoch
+                if (!force && cached.isSuccess && !SyncCoordinator.isStale(updated, clock.instant().epochSecond)) return@launch
                 val result = if (current.folder == null) {
                     withContext(Dispatchers.IO) { repository.sections(course.remoteId) }.map {
-                        val epoch = clock.instant().epochSecond
-                        state.value.copy(sections = it, sectionsUpdatedEpoch = epoch, nowEpoch = epoch, needsLogin = false)
+                        state.value.copy(sections = it.items, sectionsUpdatedEpoch = it.lastSuccessEpochSeconds,
+                            nowEpoch = clock.instant().epochSecond, needsLogin = false, error = null)
                     }
                 } else {
                     withContext(Dispatchers.IO) { repository.files(course.remoteId, current.folder.remoteId) }.map {
-                        val epoch = clock.instant().epochSecond
-                        state.value.copy(files = it, filesUpdatedEpoch = epoch, nowEpoch = epoch, needsLogin = false)
+                        state.value.copy(files = it.items, filesUpdatedEpoch = it.lastSuccessEpochSeconds,
+                            nowEpoch = clock.instant().epochSecond, needsLogin = false, error = null)
                     }
                 }
                 // Cancellation prevents a previous navigation/account's response from becoming current content.

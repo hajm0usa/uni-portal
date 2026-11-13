@@ -34,6 +34,7 @@ class CourseContentViewModelTest {
     private lateinit var provider: MoodleProvider
     private lateinit var repository: CourseContentRepository
     private lateinit var model: CourseContentViewModel
+    private lateinit var contentDao: MemoryCourseContentDao
     private val course = Course("moodle", "1", "Sample", null)
     private val clock = Clock.fixed(Instant.ofEpochSecond(1700000000), ZoneOffset.UTC)
 
@@ -42,7 +43,8 @@ class CourseContentViewModelTest {
         Dispatchers.setMain(dispatcher)
         server = MockWebServer().apply { start() }
         provider = MoodleProvider(MoodleAjaxClient(CookieJar.NO_COOKIES, "UniPortal/test", server.url("/"), 0))
-        repository = CourseContentRepository(provider)
+        contentDao = MemoryCourseContentDao()
+        repository = CourseContentRepository(provider, contentDao, clock)
         model = CourseContentViewModel(repository, clock)
         store.put("content", model)
     }
@@ -97,7 +99,7 @@ class CourseContentViewModelTest {
 
     @Test
     fun `content expiry updates the dashboard session and blocks further content networking until login`() = runTest(dispatcher) {
-        val courses = MemoryCourseDao()
+        val courses = contentDao.courses
         val sync = SyncCoordinator(provider, CourseRepository(provider, courses, clock),
             AgendaRepository(provider, MemoryAgendaDao(courses), clock), clock)
         val dashboard = PortalViewModel(PortalRepositories(sync, repository), clock)
@@ -142,7 +144,7 @@ class CourseContentViewModelTest {
         val repository = CourseContentRepository(fakeProvider, { id -> DataSource {
             if (id == "1") { entered.complete(Unit); awaitCancellation() }
             Result.success(listOf(CourseSection("moodle", "200", id, "Second", emptyList())))
-        } }, { _, _ -> DataSource { Result.success(emptyList()) } })
+        } }, { _, _ -> DataSource { Result.success(emptyList()) } }, MemoryCourseContentDao(), clock)
         val selected = CourseContentViewModel(repository, clock)
         store.put("selected", selected)
         selected.openCourse(course)
@@ -168,6 +170,84 @@ class CourseContentViewModelTest {
             safe.replace("elearn.ut.ac.ir", "elearn.ut.ac.ir:444"), safe.replace("view.php", "delete.php"),
             "https://elearn.ut.ac.ir/login/logout.php?id=1", "javascript:alert(1)",
         ).forEach { assertNull(CourseContentRepository.safeBrowserUrl(it)) }
+    }
+
+    @Test
+    fun `recreated model restores fresh course and folder lists without any network request`() = runTest(dispatcher) {
+        model.openCourse(course)
+        enqueuePage("course_content_ok.html")
+        model.resume()
+        val courseState = model.state.first { !it.loading }
+        val folder = courseState.sections!!.first().activities.last { it.kind == CourseActivity.Kind.FOLDER }
+        model.openFolder(folder)
+        enqueuePage("folder_ok.html")
+        model.resume()
+        val folderState = model.state.first { !it.loading }
+        val count = server.requestCount
+        model.close()
+        val restored = CourseContentViewModel(CourseContentRepository(provider, contentDao, clock), clock)
+        store.put("restored", restored)
+        restored.openCourse(course)
+        restored.resume()
+        val savedCourse = restored.state.first { !it.loading }
+        assertEquals(courseState.sections, savedCourse.sections)
+        assertEquals(courseState.sectionsUpdatedEpoch, savedCourse.sectionsUpdatedEpoch)
+        restored.openFolder(folder)
+        restored.resume()
+        val savedFolder = restored.state.first { !it.loading }
+        assertEquals(folderState.files, savedFolder.files)
+        assertEquals(folderState.filesUpdatedEpoch, savedFolder.filesUpdatedEpoch)
+        assertEquals(count, server.requestCount)
+    }
+
+    @Test
+    fun `stale saved page is shown before refresh completes and survives an offline failure`() = runTest(dispatcher) {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val fakeProvider = object : Provider {
+            override val id = "moodle"
+            override val session = ProviderSession()
+            override val sources = emptyList<DataSource<*>>()
+        }
+        val sections = listOf(CourseSection("moodle", "100", "1", "Saved", emptyList()))
+        contentDao.replaceSections("moodle", "1", sections, 1)
+        val repo = CourseContentRepository(fakeProvider, { DataSource {
+            entered.complete(Unit)
+            release.await()
+            Result.failure(ir.hajmousa.uniportal.core.PortalException(Reason.NETWORK_ERROR))
+        } }, { _, _ -> DataSource { Result.success(emptyList()) } }, contentDao, clock)
+        val restored = CourseContentViewModel(repo, clock)
+        store.put("stale", restored)
+        restored.openCourse(course)
+        restored.resume()
+        entered.await()
+        assertTrue(restored.state.value.loading)
+        assertEquals(sections, restored.state.value.sections)
+        assertEquals(1L, restored.state.value.sectionsUpdatedEpoch)
+        release.complete(Unit)
+        val failed = restored.state.first { !it.loading }
+        assertEquals(sections, failed.sections)
+        assertEquals(1L, failed.sectionsUpdatedEpoch)
+        assertEquals(Reason.NETWORK_ERROR, failed.error)
+    }
+
+    @Test
+    fun `expired session still allows browsing saved folder lists without making requests`() = runTest(dispatcher) {
+        val folder = CourseActivity("moodle", "200", "Folder", CourseActivity.Kind.FOLDER,
+            "https://elearn.ut.ac.ir/mod/folder/view.php?id=200")
+        contentDao.replaceSections("moodle", "1", listOf(CourseSection("moodle", "100", "1", "Saved", listOf(folder))), 1)
+        contentDao.replaceFiles("moodle", "1", "200", emptyList(), 2)
+        contentDao.recordFailure("moodle", CourseContentDao.sectionsKey("1"), Reason.SESSION_EXPIRED)
+        model.openCourse(course)
+        model.resume()
+        assertTrue(model.state.first { !it.loading }.needsLogin)
+        model.openFolder(folder)
+        model.resume()
+        val saved = model.state.first { !it.loading }
+        assertTrue(saved.needsLogin)
+        assertEquals(emptyList<CourseFile>(), saved.files)
+        assertEquals(2L, saved.filesUpdatedEpoch)
+        assertEquals(0, server.requestCount)
     }
 
     private fun enqueuePage(name: String) {

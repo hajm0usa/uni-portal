@@ -4,6 +4,7 @@ internal class MemoryCourseDao : CourseDao() {
     private val rows = mutableListOf<CourseEntity>()
     private val states = mutableMapOf<Pair<String, String>, SyncStateEntity>()
     val agendaRows = mutableListOf<AgendaEntity>()
+    val contentRows = mutableMapOf<Pair<String, String>, CourseContentEntity>()
     var failStorage = false
 
     private fun checkStorage() { check(!failStorage) { "private-example-input" } }
@@ -23,9 +24,13 @@ internal class MemoryCourseDao : CourseDao() {
         checkStorage()
         agendaRows.removeAll { it.providerId == providerId }
     }
-    override fun deleteSyncState(providerId: String, section: String) {
+    override fun deleteContent(providerId: String) {
         checkStorage()
-        states.remove(providerId to section)
+        contentRows.keys.removeAll { it.first == providerId }
+    }
+    override fun deleteAllSyncState(providerId: String) {
+        checkStorage()
+        states.keys.removeAll { it.first == providerId }
     }
     override fun insertCourses(courses: List<CourseEntity>) {
         checkStorage()

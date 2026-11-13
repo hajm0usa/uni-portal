@@ -68,7 +68,7 @@ internal fun CourseContentScreen(
                 TextButton(onClick = onBack) { Text(stringResource(R.string.logs_back)) }
                 Text(state.folder?.title ?: course.name ?: course.shortName ?: stringResource(R.string.course_unnamed),
                     style = MaterialTheme.typography.headlineMedium)
-                Text(stringResource(R.string.content_memory_note))
+                Text(stringResource(R.string.content_cache_note))
                 val updated = if (state.folder == null) state.sectionsUpdatedEpoch else state.filesUpdatedEpoch
                 updated?.let { Text(stringResource(R.string.courses_last_updated, formatPersianDateTime(it))) }
                 if (updated != null && (state.error != null || SyncCoordinator.isStale(updated, state.nowEpoch))) {
@@ -108,7 +108,7 @@ internal fun CourseContentScreen(
                                 when (activity.kind) {
                                     CourseActivity.Kind.LABEL -> Unit
                                     CourseActivity.Kind.FOLDER -> Button(onClick = { onFolder(activity) },
-                                        enabled = !state.loading && !state.needsLogin && activity.deepLink != null) {
+                                        enabled = !state.loading && activity.deepLink != null) {
                                         Text(stringResource(R.string.content_open_folder))
                                     }
                                     else -> {
