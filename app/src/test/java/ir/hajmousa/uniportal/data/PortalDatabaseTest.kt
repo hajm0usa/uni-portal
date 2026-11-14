@@ -32,7 +32,7 @@ class PortalDatabaseTest {
     }
 
     private fun open() = Room.databaseBuilder(context, PortalDatabase::class.java, "course-test.db")
-        .addMigrations(PortalDatabase.MIGRATION_1_2, PortalDatabase.MIGRATION_2_3)
+        .addMigrations(PortalDatabase.MIGRATION_1_2, PortalDatabase.MIGRATION_2_3, PortalDatabase.MIGRATION_3_4)
         .allowMainThreadQueries().build()
 
     @After
@@ -275,5 +275,94 @@ class PortalDatabaseTest {
         assertEquals(400L, db.agendaDao().lastSuccessfulSync())
         db.courseDao().clearPage("other")
         assertNull(db.agendaDao().lastSuccessfulSync())
+    }
+
+    @Test
+    fun `badge identities survive restart and acknowledgment and clearing stay provider scoped`() {
+        val item = AgendaItem("moodle", "1", "Sample", 1700000000, AgendaItem.Kind.DEADLINE)
+        listOf("moodle", "other").forEach { provider ->
+            db.agendaDao().replacePreview(provider, emptyList(), 100)
+            db.agendaDao().replacePreview(provider, listOf(item.copy(providerId = provider)), 200)
+        }
+        db.agendaDao().markItemSeen("moodle", "1")
+        db.close()
+        db = open()
+        assertEquals(listOf(AgendaObservedEntity("moodle", "1", false)), db.agendaDao().observedItems("moodle"))
+        assertEquals(listOf(AgendaObservedEntity("other", "1", true)), db.agendaDao().observedItems("other"))
+        assertEquals(200L, db.agendaDao().lastSuccessfulSync())
+        db.courseDao().clearPage("moodle")
+        assertTrue(db.agendaDao().observedItems("moodle").isEmpty())
+        assertEquals(1, db.agendaDao().observedItems("other").size)
+    }
+
+    @Test
+    fun `failed preview replacement and failed account clear roll back badge history with the cached data`() {
+        val item = AgendaItem("moodle", "1", "Sample", 1700000000, AgendaItem.Kind.DEADLINE)
+        db.agendaDao().replacePreview("moodle", listOf(item), 100)
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_badge_sync BEFORE INSERT ON sync_state BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END")
+        try {
+            db.agendaDao().replacePreview("moodle", listOf(item, item.copy(remoteId = "2")), 200)
+            fail("Expected metadata failure")
+        } catch (_: android.database.sqlite.SQLiteException) { }
+        assertEquals(listOf(AgendaObservedEntity("moodle", "1", false)), db.agendaDao().observedItems("moodle"))
+        assertEquals(listOf(item), db.agendaDao().readPreview("moodle")!!.items)
+        db.openHelper.writableDatabase.execSQL("DROP TRIGGER fail_badge_sync")
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_badge_clear BEFORE DELETE ON sync_state BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END")
+        try {
+            db.courseDao().clearPage("moodle")
+            fail("Expected clear failure")
+        } catch (_: android.database.sqlite.SQLiteException) { }
+        assertEquals(listOf(AgendaObservedEntity("moodle", "1", false)), db.agendaDao().observedItems("moodle"))
+        assertEquals(listOf(item), db.agendaDao().readPreview("moodle")!!.items)
+    }
+
+    @Test
+    fun `live badge flow reflects fetch acknowledgment and account clearing without changing sync time`() = runBlocking {
+        val updates = Channel<List<AgendaObservedEntity>>(Channel.UNLIMITED)
+        val observer = launch(Dispatchers.IO) { db.agendaDao().observeNewItems("moodle").collect { updates.send(it) } }
+        suspend fun awaitIds(ids: Set<String>) = withTimeout(10000) {
+            while (updates.receive().map { it.remoteId }.toSet() != ids) { }
+        }
+        try {
+            awaitIds(emptySet())
+            val item = AgendaItem("moodle", "1", "Sample", 1700000000, AgendaItem.Kind.DEADLINE)
+            db.agendaDao().replacePreview("moodle", emptyList(), 100)
+            db.agendaDao().replacePreview("moodle", listOf(item), 200)
+            awaitIds(setOf("1"))
+            db.agendaDao().markItemSeen("moodle", "1")
+            awaitIds(emptySet())
+            assertEquals(200L, db.agendaDao().lastSuccessfulSync())
+            db.agendaDao().replacePreview("moodle", listOf(item.copy(remoteId = "2")), 300)
+            awaitIds(setOf("2"))
+            db.courseDao().clearPage("moodle")
+            awaitIds(emptySet())
+        } finally { observer.cancelAndJoin(); updates.close() }
+    }
+
+    @Test
+    fun `version three migration preserves cached pages and seeds existing deadlines as already observed`() {
+        db.close()
+        context.deleteDatabase("course-test.db")
+        android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath("course-test.db"), null).use { legacy ->
+            legacy.execSQL("CREATE TABLE course (providerId TEXT NOT NULL, remoteId TEXT NOT NULL, name TEXT, shortName TEXT, position INTEGER NOT NULL, PRIMARY KEY(providerId, remoteId))")
+            legacy.execSQL("CREATE TABLE sync_state (providerId TEXT NOT NULL, section TEXT NOT NULL, lastSuccessEpochSeconds INTEGER, lastError TEXT, PRIMARY KEY(providerId, section))")
+            legacy.execSQL("CREATE TABLE agenda_item (providerId TEXT NOT NULL, remoteId TEXT NOT NULL, title TEXT NOT NULL, startEpoch INTEGER NOT NULL, kind TEXT NOT NULL, courseRemoteId TEXT, deepLink TEXT, position INTEGER NOT NULL, PRIMARY KEY(providerId, remoteId))")
+            legacy.execSQL("CREATE TABLE course_content_page (providerId TEXT NOT NULL, remoteId TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(providerId, remoteId))")
+            legacy.execSQL("INSERT INTO course VALUES ('moodle', '1', 'synthetic saved course', NULL, 0)")
+            legacy.execSQL("INSERT INTO agenda_item VALUES ('moodle', '1', 'Sample', 1700000000, 'DEADLINE', NULL, NULL, 0)")
+            legacy.execSQL("INSERT INTO agenda_item VALUES ('moodle', '2', 'Other', 1700000100, 'OTHER', NULL, NULL, 1)")
+            legacy.execSQL("INSERT INTO sync_state VALUES ('moodle', 'agenda_preview', 123, NULL)")
+            legacy.execSQL("INSERT INTO sync_state VALUES ('moodle', 'content:course:1', 456, NULL)")
+            legacy.execSQL("INSERT INTO course_content_page VALUES ('moodle', 'content:course:1', '[]')")
+            legacy.version = 3
+        }
+        db = open()
+        assertEquals(listOf(old), db.courseDao().courses("moodle").map { Course(it.providerId, it.remoteId, it.name, it.shortName) })
+        assertEquals(2, db.agendaDao().readPreview("moodle")!!.items.size)
+        assertEquals(CachedContent<CourseSection>(emptyList(), 456), db.courseContentDao().readSections("moodle", "1"))
+        assertEquals(listOf(AgendaObservedEntity("moodle", "1", false)), db.agendaDao().observedItems("moodle"))
+        val added = AgendaItem("moodle", "3", "New sample", 1700000200, AgendaItem.Kind.DEADLINE)
+        db.agendaDao().replacePreview("moodle", db.agendaDao().readPreview("moodle")!!.items + added, 789)
+        assertEquals(setOf("3"), db.agendaDao().observedItems("moodle").filter { it.isNew }.map { it.remoteId }.toSet())
     }
 }

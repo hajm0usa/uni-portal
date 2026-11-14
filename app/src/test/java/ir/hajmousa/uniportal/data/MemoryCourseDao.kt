@@ -1,10 +1,13 @@
 package ir.hajmousa.uniportal.data
 
+import kotlinx.coroutines.flow.MutableStateFlow
+
 internal class MemoryCourseDao : CourseDao() {
     private val rows = mutableListOf<CourseEntity>()
     private val states = mutableMapOf<Pair<String, String>, SyncStateEntity>()
     val agendaRows = mutableListOf<AgendaEntity>()
     val contentRows = mutableMapOf<Pair<String, String>, CourseContentEntity>()
+    val observedRows = MutableStateFlow<List<AgendaObservedEntity>>(emptyList())
     var failStorage = false
 
     private fun checkStorage() { check(!failStorage) { "private-example-input" } }
@@ -27,6 +30,10 @@ internal class MemoryCourseDao : CourseDao() {
     override fun deleteAgenda(providerId: String) {
         checkStorage()
         agendaRows.removeAll { it.providerId == providerId }
+    }
+    override fun deleteObservedAgenda(providerId: String) {
+        checkStorage()
+        observedRows.value = observedRows.value.filterNot { it.providerId == providerId }
     }
     override fun deleteContent(providerId: String) {
         checkStorage()

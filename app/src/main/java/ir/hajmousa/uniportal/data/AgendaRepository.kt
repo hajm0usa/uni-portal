@@ -4,6 +4,11 @@ import ir.hajmousa.uniportal.core.AppLog
 import ir.hajmousa.uniportal.core.PortalException
 import ir.hajmousa.uniportal.provider.moodle.MoodleProvider
 import java.time.Clock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.withLock
 
 class AgendaRepository internal constructor(
@@ -16,6 +21,17 @@ class AgendaRepository internal constructor(
         this(provider, provider.agendaPreview, dao, clock)
 
     val session = provider.session.state
+
+    val newItemKeys: Flow<Result<Set<Pair<String, String>>>> = dao.observeNewItems(provider.id)
+        .map { items -> Result.success(items.map { it.providerId to it.remoteId }.toSet()) }
+        .catch {
+            AppLog.record(AppLog.Event.CACHE_STORAGE_FAILED)
+            emit(Result.failure(PortalException(PortalException.Reason.STORAGE_ERROR)))
+        }.flowOn(Dispatchers.IO)
+
+    suspend fun markSeen(remoteId: String): Result<Unit> = CourseRepository.cacheLock.withLock {
+        storage { dao.markItemSeen(provider.id, remoteId) }
+    }
 
     // shortcut: reread on startup/refresh like courses, switch to DAO Flow when another writer is added.
     suspend fun cachedPreview(): Result<CachedAgendaPreview?> = CourseRepository.cacheLock.withLock {

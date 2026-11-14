@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.hajmousa.uniportal.core.PortalException
 import ir.hajmousa.uniportal.data.CachedAgendaPreview
+import ir.hajmousa.uniportal.data.AgendaItem
 import ir.hajmousa.uniportal.data.CachedCoursePage
 import ir.hajmousa.uniportal.data.ProviderSession
 import ir.hajmousa.uniportal.data.PortalRepositories
@@ -28,6 +29,8 @@ data class PortalState(
     val needsLogin: Boolean = false,
     val authenticated: Boolean = false,
     val nowEpoch: Long = 0,
+    val newAgendaItemKeys: Set<Pair<String, String>> = emptySet(),
+    val newItemsError: Boolean = false,
 )
 
 // Today and Calendar share the same preview and refresh/account-transition lifecycle.
@@ -37,8 +40,11 @@ class PortalViewModel(val repositories: PortalRepositories, private val clock: C
     val state = mutableState.asStateFlow()
     private var work: Job? = null
     private var restored = false
+    private var badgeObserver: Job? = null
+    private val markingJobs = mutableListOf<Job>()
 
     init {
+        observeBadges()
         viewModelScope.launch {
             sync.session.collect { session ->
                 mutableState.value = state.value.copy(needsLogin = session == ProviderSession.State.NeedsLogin,
@@ -53,6 +59,7 @@ class PortalViewModel(val repositories: PortalRepositories, private val clock: C
 
     fun refresh(force: Boolean = false) {
         if (state.value.loading || state.value.clearing) return
+        if (state.value.newItemsError) observeBadges()
         mutableState.value = state.value.copy(loading = true, nowEpoch = clock.instant().epochSecond)
         work = viewModelScope.launch {
             try {
@@ -69,17 +76,42 @@ class PortalViewModel(val repositories: PortalRepositories, private val clock: C
 
     suspend fun stopRefresh() { work?.cancelAndJoin() }
 
+    fun markAgendaItemSeen(item: AgendaItem) {
+        if (state.value.clearing || (item.providerId to item.remoteId) !in state.value.newAgendaItemKeys ||
+            state.value.agenda?.items?.none { it.providerId == item.providerId && it.remoteId == item.remoteId } != false) return
+        markingJobs.removeAll { it.isCompleted }
+        markingJobs += viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { sync.markAgendaItemSeen(item) }
+            if (result.isFailure) mutableState.value = state.value.copy(newItemsError = true)
+            else if (state.value.newItemsError) observeBadges()
+        }
+    }
+
+    private fun observeBadges() {
+        badgeObserver?.cancel()
+        badgeObserver = viewModelScope.launch {
+            sync.newAgendaItemKeys.collect { result ->
+                mutableState.value = state.value.copy(newAgendaItemKeys = result.getOrElse { state.value.newAgendaItemKeys },
+                    newItemsError = result.isFailure)
+            }
+        }
+    }
+
     fun clearForAccountChange(onCleared: () -> Unit) {
         if (state.value.clearing) return
         val previous = work
+        badgeObserver?.cancel()
         mutableState.value = PortalState(loading = false, clearing = true)
         work = viewModelScope.launch {
             previous?.cancelAndJoin()
+            markingJobs.forEach { it.cancelAndJoin() }
+            markingJobs.clear()
             val result = withContext(Dispatchers.IO) { sync.clearForAccountChange() }
             restored = true
             mutableState.value = PortalState(loading = false,
                 coursesError = if (result.isFailure) PortalException.Reason.STORAGE_ERROR else null,
                 agendaError = if (result.isFailure) PortalException.Reason.STORAGE_ERROR else null)
+            observeBadges()
             if (result.isSuccess) onCleared()
         }
     }

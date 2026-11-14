@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -83,6 +84,7 @@ internal fun TodayScreen(
     onCalendar: () -> Unit,
     onCourses: () -> Unit,
     onOpenCourse: (Course) -> Unit,
+    onOpenAgendaItem: (AgendaItem) -> Unit = {},
 ) {
     val busy = state.loading || state.clearing
     val canRefresh = enabled && !busy && !state.needsLogin
@@ -154,6 +156,7 @@ internal fun TodayScreen(
             state.agendaError?.takeUnless { it == PortalException.Reason.SESSION_EXPIRED }?.let { error ->
                 item { HomeNotice(homeError(error, R.string.agenda_server_error), stringResource(R.string.logs_refresh), canRefresh, onRefresh) }
             }
+            if (state.newItemsError) item { HomeNotice(stringResource(R.string.agenda_badge_error)) }
             state.agenda?.let { page ->
                 if (SyncCoordinator.isStale(page.lastSuccessEpochSeconds, state.nowEpoch) && !state.needsLogin) item {
                     HomeNotice(stringResource(R.string.home_stale), stringResource(R.string.logs_refresh), canRefresh, onRefresh)
@@ -163,7 +166,11 @@ internal fun TodayScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 agenda.featured?.let { event ->
-                    item(key = "featured") { FeaturedDeadline(event, courses, state.nowEpoch, enabled && !state.clearing) { selectedEvent = event } }
+                    item(key = "featured") { FeaturedDeadline(event, courses, state.nowEpoch, enabled && !state.clearing,
+                        isNew = (event.providerId to event.remoteId) in state.newAgendaItemKeys) {
+                        selectedEvent = event
+                        onOpenAgendaItem(event)
+                    } }
                 }
                 if (agenda.days.isNotEmpty()) item(key = "upcoming") {
                     HomeSectionHeading(stringResource(R.string.home_upcoming), stringResource(R.string.home_view_calendar), onCalendar)
@@ -172,12 +179,16 @@ internal fun TodayScreen(
                     item { Text(homeDay(events.first().startEpoch, state.nowEpoch), style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     items(events, key = { "event:${it.providerId.length}:${it.providerId}:${it.remoteId}" }) { event ->
-                        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(enabled = enabled && !state.clearing) { selectedEvent = event }
+                        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(enabled = enabled && !state.clearing) {
+                            selectedEvent = event
+                            onOpenAgendaItem(event)
+                        }
                             .padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(painterResource(R.drawable.nav_calendar), contentDescription = null,
                                 Modifier.size(38.dp).padding(7.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(event.title, style = MaterialTheme.typography.titleMedium)
+                                if ((event.providerId to event.remoteId) in state.newAgendaItemKeys) NewAgendaBadge()
                                 Text(eventContext(event, courses), style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -193,6 +204,10 @@ internal fun TodayScreen(
                     // shortcut: the source is still a preview, remove this notice after verified pagination.
                     Text(stringResource(R.string.home_agenda_scope), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (page.items.any { (it.providerId to it.remoteId) in state.newAgendaItemKeys }) {
+                        Text(stringResource(R.string.agenda_newly_seen_note), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
             if (state.agenda == null && !busy && !state.needsLogin) item { HomeNotice(stringResource(R.string.agenda_not_loaded)) }
@@ -233,13 +248,15 @@ internal fun TodayScreen(
 }
 
 @Composable
-private fun FeaturedDeadline(event: AgendaItem, courses: List<Course>, nowEpoch: Long, enabled: Boolean, onOpen: () -> Unit) {
+private fun FeaturedDeadline(event: AgendaItem, courses: List<Course>, nowEpoch: Long, enabled: Boolean, isNew: Boolean, onOpen: () -> Unit) {
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(horizontal = 20.dp).padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(painterResource(R.drawable.home_clock), contentDescription = null, Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(stringResource(R.string.home_featured), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.home_featured), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (isNew) NewAgendaBadge()
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(event.title, style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 32.sp, fontWeight = FontWeight.Medium))
@@ -314,7 +331,7 @@ private fun eventContext(event: AgendaItem, courses: List<Course>): String = cou
 }?.let { courseName(it) } ?: stringResource(if (event.kind == AgendaItem.Kind.DEADLINE) R.string.agenda_deadline else R.string.agenda_event)
 
 @Composable
-private fun EventDetails(event: AgendaItem, courses: List<Course>, onDismiss: () -> Unit) {
+internal fun EventDetails(event: AgendaItem, courses: List<Course>, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val url = event.deepLink?.let(CourseContentRepository::safeBrowserUrl)
     var failed by remember(event) { mutableStateOf(false) }
@@ -341,6 +358,13 @@ private fun EventDetails(event: AgendaItem, courses: List<Course>, onDismiss: ()
         },
         dismissButton = { if (url != null) TextButton(onClick = onDismiss) { Text(stringResource(R.string.logs_back)) } },
     )
+}
+
+@Composable
+internal fun NewAgendaBadge() {
+    Badge(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+        Text(stringResource(R.string.agenda_newly_seen), style = MaterialTheme.typography.labelSmall)
+    }
 }
 
 @Preview(locale = "fa", showBackground = true, widthDp = 360, heightDp = 850)

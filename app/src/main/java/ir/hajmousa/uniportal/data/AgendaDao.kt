@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import ir.hajmousa.uniportal.core.PortalException
+import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "agenda_item", primaryKeys = ["providerId", "remoteId"])
 data class AgendaEntity(
@@ -33,6 +34,18 @@ abstract class AgendaDao {
 
     @Query("SELECT MAX(lastSuccessEpochSeconds) FROM sync_state")
     abstract fun lastSuccessfulSync(): Long?
+
+    @Query("SELECT * FROM agenda_observed WHERE providerId = :providerId")
+    abstract fun observedItems(providerId: String): List<AgendaObservedEntity>
+
+    @Query("SELECT * FROM agenda_observed WHERE providerId = :providerId AND isNew = 1")
+    abstract fun observeNewItems(providerId: String): Flow<List<AgendaObservedEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract fun insertObserved(items: List<AgendaObservedEntity>)
+
+    @Query("UPDATE agenda_observed SET isNew = 0 WHERE providerId = :providerId AND remoteId = :remoteId")
+    abstract fun markItemSeen(providerId: String, remoteId: String)
 
     @Transaction
     open fun readWidgetAgenda(): WidgetAgendaCache {
@@ -77,6 +90,10 @@ abstract class AgendaDao {
         require(epochSeconds in 0..Long.MAX_VALUE / 1000)
         require(items.all { it.providerId == providerId && it.startEpoch in 1..Long.MAX_VALUE / 1000 })
         require(items.map { it.remoteId }.distinct().size == items.size)
+        val known = observedItems(providerId).map { it.remoteId }.toSet()
+        val initialized = known.isNotEmpty() || syncState(providerId, SECTION)?.lastSuccessEpochSeconds != null
+        insertObserved(items.filter { it.kind == AgendaItem.Kind.DEADLINE && it.remoteId !in known }
+            .map { AgendaObservedEntity(providerId, it.remoteId, isNew = initialized) })
         // shortcut: store only the six-event preview, expand after calendar pagination is verified.
         deleteItems(providerId)
         insertItems(items.mapIndexed { index, item ->

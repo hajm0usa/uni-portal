@@ -120,4 +120,7 @@
     <string name="session_reminder_channel_description">یادآوری محلی پس از حدود ۳ روز بدون دریافت موفق اطلاعات</string>
     <string name="session_reminder_title">یادآوری تازه‌سازی و ورود دوباره</string>
     <string name="session_reminder_body">برای به‌روز ماندن یادآوری‌ها، برنامه را باز کنید و در صورت نیاز دوباره وارد شوید. این یادآوری محلی است و به‌معنای پایان قطعی نشست شما نیست.</string>
+    <string name="agenda_newly_seen">تازه دیده‌شده</string>
+    <string name="agenda_newly_seen_note">این نشان یعنی مهلت برای نخستین بار در پیش‌نمایش شما دیده شده، نه لزوماً تازه ایجاد شده است. با باز کردن جزئیات، نشان برداشته می‌شود.</string>
+    <string name="agenda_badge_error">خواندن یا ذخیرهٔ نشان تازه‌ها ناموفق بود؛ در صورت ادامهٔ مشکل، برنامه را دوباره باز کنید.</string>
 </resources>

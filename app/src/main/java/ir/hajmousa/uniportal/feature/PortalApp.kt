@@ -237,7 +237,7 @@ fun PortalApp(reminderIntent: Intent? = null) {
                 credentialStorageError = credentialStorageError,
                 onRefresh = { model.refresh(force = true) }, onSignIn = openLogin, onSignOut = signOut,
                 onShowLogs = openLogs, onCalendar = { tab = PortalTab.CALENDAR }, onCourses = { tab = PortalTab.COURSES },
-                onOpenCourse = contentModel::openCourse)
+                onOpenCourse = contentModel::openCourse, onOpenAgendaItem = model::markAgendaItemSeen)
         } else {
             val scroll = rememberScrollState()
             LaunchedEffect(tab) { scroll.scrollTo(0) }
@@ -286,7 +286,8 @@ fun PortalApp(reminderIntent: Intent? = null) {
                     PortalTab.COURSES -> CoursesContent(coursesState, enabled = !signingOut,
                         onLoad = { model.refresh(force = true) }, onOpen = contentModel::openCourse)
                     PortalTab.TODAY, PortalTab.CALENDAR -> AgendaContent(state, calendar = tab == PortalTab.CALENDAR,
-                        enabled = !signingOut, onRefresh = { model.refresh(force = true) }, target = notificationTarget)
+                        enabled = !signingOut, onRefresh = { model.refresh(force = true) }, target = notificationTarget,
+                        onOpenAgendaItem = model::markAgendaItemSeen)
                     PortalTab.MESSAGES -> Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(stringResource(tab.title), style = MaterialTheme.typography.titleLarge)

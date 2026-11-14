@@ -164,5 +164,71 @@ class PortalViewModelTest {
         server.enqueue(MockResponse(body = fixture("moodle_config_ok.html")))
         server.enqueue(MockResponse(headers = headersOf("Content-Type", "application/json"), body = fixture(name)))
     }
+
+    @Test
+    fun `pending badges restore offline and opening an item acknowledges it across model recreation`() = runTest(dispatcher) {
+        agendaDao.replacePreview("moodle", emptyList(), 100)
+        agendaDao.replacePreview("moodle", listOf(old), 200)
+        createDefaultModel()
+        model.state.first { !it.loading && (old.providerId to old.remoteId) in it.newAgendaItemKeys }
+        model.markAgendaItemSeen(old)
+        model.state.first { it.newAgendaItemKeys.isEmpty() }
+        assertFalse(agendaDao.observedItems("moodle").single().isNew)
+        createDefaultModel()
+        val restored = model.state.first { !it.loading }
+        assertTrue(restored.newAgendaItemKeys.isEmpty())
+        assertEquals(listOf(old), restored.agenda!!.items)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `badge acknowledgment failure preserves the flag and foreign selections cannot clear it`() = runTest(dispatcher) {
+        agendaDao.replacePreview("moodle", emptyList(), 100)
+        agendaDao.replacePreview("moodle", listOf(old), 200)
+        createDefaultModel()
+        model.state.first { !it.loading && it.newAgendaItemKeys.isNotEmpty() }
+        model.markAgendaItemSeen(old.copy(providerId = "other"))
+        model.markAgendaItemSeen(old.copy(remoteId = "forged"))
+        assertTrue(agendaDao.observedItems("moodle").single().isNew)
+        dao.failStorage = true
+        model.markAgendaItemSeen(old)
+        val failed = model.state.first { it.newItemsError }
+        assertTrue((old.providerId to old.remoteId) in failed.newAgendaItemKeys)
+        dao.failStorage = false
+        model.markAgendaItemSeen(old)
+        model.state.first { !it.newItemsError && it.newAgendaItemKeys.isEmpty() }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `account clearing hides badges immediately removes their ledger and restarts observation safely`() = runTest(dispatcher) {
+        agendaDao.replacePreview("moodle", emptyList(), 100)
+        agendaDao.replacePreview("moodle", listOf(old), 200)
+        createDefaultModel()
+        model.state.first { !it.loading && it.newAgendaItemKeys.isNotEmpty() }
+        model.clearForAccountChange {}
+        assertTrue(model.state.value.newAgendaItemKeys.isEmpty())
+        model.state.first { !it.clearing }
+        assertTrue(agendaDao.observedItems("moodle").isEmpty())
+        agendaDao.replacePreview("moodle", emptyList(), 300)
+        agendaDao.replacePreview("moodle", listOf(old), 400)
+        model.state.first { it.newAgendaItemKeys == setOf(old.providerId to old.remoteId) }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `refresh recovers a failed badge observer without network when the cache is fresh`() = runTest(dispatcher) {
+        dao.replacePage("moodle", emptyList(), 1700000000)
+        agendaDao.replacePreview("moodle", emptyList(), 1699999999)
+        agendaDao.replacePreview("moodle", listOf(old), 1700000000)
+        dao.failStorage = true
+        createDefaultModel()
+        model.state.first { !it.loading && it.newItemsError }
+        dao.failStorage = false
+        model.refresh()
+        val recovered = model.state.first { !it.loading && !it.newItemsError && it.newAgendaItemKeys.isNotEmpty() }
+        assertEquals(setOf(old.providerId to old.remoteId), recovered.newAgendaItemKeys)
+        assertEquals(0, server.requestCount)
+    }
     private fun fixture(name: String) = requireNotNull(javaClass.getResource("/fixtures/moodle/$name")).readText()
 }

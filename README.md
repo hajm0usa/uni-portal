@@ -150,7 +150,19 @@ server session has expired. Permission/channel blocking is independent of deadli
 notifications. All **204 tests** pass across isolated harnesses (158 standalone,
 46 Robolectric), with isolated full-source compilation passing. APK/device timing,
 permission/channel behavior, boot delivery and tap navigation remain unverified.
-The in-app new-item badge remains unimplemented.
+The in-app "newly seen" badge now marks later-observed assignment deadlines on
+Home and Calendar. First successful load establishes a baseline; existing cached
+deadlines stay unbadged on upgrade. Provider-scoped IDs persist through preview
+omissions, so renamed/rescheduled/reappearing entries are not falsely new. Opening
+native details acknowledges the badge locally, including offline; Room Flow keeps
+flags current across refresh/recreation. Account clearing removes observation
+history too. Acknowledgment does not change sync timestamps or produce notifications.
+Room schema 4 adds only an ID/flag ledger with a non-destructive, baseline-seeding
+3→4 migration. All **220 tests** pass in isolated harnesses (170 standalone, 50
+Robolectric), including migration/rollback and observer recovery. Full-source
+isolated compilation passes. Badge UI, live detection and the new upgrade still
+need CI/APK/device verification. "Newly seen" refers only to the incomplete cached
+preview, not verified assignment creation time or a complete feed.
 
 Room version 2 adds `agenda_item` with an explicit non-destructive 1→2 migration. Room/KSP schema generation and generated Kotlin compilation pass in isolation with minimal Android API stubs; a SQLite self-check confirms migration SQL matches the generated schema and preserves old rows. Eighteen Android-backed tests need CI: six database, two ICU date, four credential-storage and six new folder-storage tests. The folder store/ViewModel and new tests compile in an isolated Android-API JVM harness, but its tests hit dependency-download and SDK-runtime-classpath failures, not a passing run. The full Android/Compose build remains blocked resolving AGP; CI must run all **139 JVM test declarations**, the Node checks and produce an APK. Actual Android migration, Keystore, SAF picker/grants/restart behavior, UI lifecycle and live calendar/content behavior are not proven by these local checks. The owner confirmed automatic sign-in works and accepted Slice 1; that confirmation does not separately prove every failure/recovery path.
 
