@@ -105,6 +105,8 @@ The owner fills this while developing, using the browser DevTools (F12). The age
 
 ## Course content (sections, modules, files)
 
+Latest client verification (2026-11-14): CI APK build passed for commit `4a4aaea` (run 43501216798). The owner confirmed the supplied device checklist, including live course/folder browsing, in-place upgrade preserving cached data, offline lists after force-stop/reopen, refresh failure/recovery, saved login, basic Home/navigation/themes, persistent SAF selection/cancellation and logout clearing. This supersedes earlier pending client/device notes below, but establishes no new server response shapes, download behavior or calendar pagination facts. Downloads remain deferred.
+
 - Course sections/activities are server-rendered HTML in the owner's supplied weekly course page (`body#page-course-view-weeks`, class `format-weeks`). The owner observed no `service.php` requests when reloading this course. This establishes an HTML read path for this sample, not proof that no AJAX alternative or other course format exists.
 - Observed course link: `https://elearn.ut.ac.ir/course/view.php?id=<courseId>` (parameter shape confirmed by links within the supplied page; the actual Network request/status/redirect chain was not supplied). Section links use `/course/section.php?id=<sectionDatabaseId>`.
 - Main content structure: `#region-main .course-content [data-for="course_sectionlist"]` contains `li[data-for="section"]`. `data-id` is the section database ID; `data-number` / `data-sectionid` and the `section-N` DOM ID are its ordinal (including zero), not interchangeable IDs. The supplied page has 20 section nodes, ordinals 0–19; only this captured page's visible content is established, not completeness of every course. Section names are in `data-sectionname` and `h3.sectionname`; one section has a `current` class. Empty sections have an empty `ul[data-for="cmlist"]` and must not be mistaken for a parse failure.
@@ -125,9 +127,7 @@ The owner fills this while developing, using the browser DevTools (F12). The age
 
 ## Grades
 
-- AJAX or HTML only: `TODO`
-- Method / URL: `TODO`
-- Sanitized sample: `TODO`
+- Removed from app scope by the owner on 2026-11-14 (decision #29), superseding the earlier discovery authorization. No capture or sample is needed; no grades method, URL or response shape is claimed as verified.
 
 ## Messages
 

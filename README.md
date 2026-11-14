@@ -23,7 +23,7 @@ feed is incomplete. Design approval does not change that server-data limitation.
 
 ## Current scope: Slice 3 — course/folder screens (downloads pending)
 
-- Native Today, Courses and Calendar agenda tabs; Grades/Messages are coming-soon cards. Teal light/dark fallback and wallpaper colors on Android 12+.
+- Native Today, Courses and Calendar agenda tabs; Messages is a coming-soon card. Grades is excluded from the app. Teal light/dark fallback and wallpaper colors on Android 12+.
 - Bundled Vazirmatn font, including its SIL Open Font License in APK assets.
 - **Long-press the app title** to open local diagnostics. Use the refresh/clear buttons; system Back returns to the selected tab.
 - Logs are a 200-entry, process-memory-only buffer. Only fixed event IDs and exception class/stack frames are accepted; exception messages, causes and suppressed exceptions are not recorded. No logcat or disk logging.
@@ -105,9 +105,13 @@ tests** also pass: ten database, three Persian-date, four credential-store and s
 SAF/DataStore checks. All **160 tests** pass across the two isolated harnesses.
 The temporary harness needed a dependency mirror and inclusion of KSP-generated
 implementations; neither workaround changes the app build.
-The full APK build still stops resolving AGP 9.5.1. Resource linking, packaging,
-hardware Keystore, real SAF grants and native/offline device navigation (including
-on-device Room migration/persistence) are not verified.
+The full CI APK build passed for commit `4a4aaea` in
+[run 43501216798](https://github.com/hajm0usa/uni-portal/actions/runs/43501216798).
+On 2026-11-14 the owner verified the device checklist: in-place upgrade retaining
+cached data, saved login, course/folder navigation, offline persistence after
+force-stop/reopen, failed-refresh retention and online recovery, basic RTL/light-dark
+Home, SAF selection persistence/cancellation, and logout clearing account data.
+This is not exhaustive hardware Keystore, storage-provider or migration-path testing.
 
 Folder detail screens also offer a persistent SAF download-folder picker with Persian Android 11+ restriction guidance. The tree URI is stored in DataStore after verifying persisted read/write access and directory create support; access is rechecked on resume. Missing/revoked/unwritable folders prompt selection again. Cancelling or failing a new selection preserves the existing choice. This prepares storage only: no file download/open action is enabled yet. DataStore Preferences 1.3.0 was checked against the official AndroidX stable release page before addition.
 

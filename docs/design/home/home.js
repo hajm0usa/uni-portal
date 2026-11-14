@@ -77,7 +77,7 @@ document.querySelectorAll('[data-course]').forEach(button => button.addEventList
   showDetail(button.dataset.course, 'محتوای درس', 'این پیش‌نمایش فقط صفحهٔ امروز را پوشش می‌دهد. طراحی بخش‌های درس و فایل‌ها پس از تأیید این صفحه انجام می‌شود.');
 }));
 document.querySelectorAll('[data-destination]').forEach(button => button.addEventListener('click', () => {
-  const upcoming = ['نمره‌ها', 'پیام‌ها'].includes(button.dataset.destination);
+  const upcoming = button.dataset.destination === 'پیام‌ها';
   showDetail(button.dataset.destination, upcoming ? 'به‌زودی' : 'صفحهٔ بعدی', upcoming
     ? 'این بخش در برنامه هنوز آماده نیست. در این پیش‌نمایش نیز اطلاعاتی برای آن ساخته نشده است.'
     : 'این پیش‌نمایش فقط صفحهٔ امروز را پوشش می‌دهد. این دکمه در برنامه به بخش مربوط می‌رود؛ طراحی آن بخش در مرحلهٔ بعد انجام می‌شود.');

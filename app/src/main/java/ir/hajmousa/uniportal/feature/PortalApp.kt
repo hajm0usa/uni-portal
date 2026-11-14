@@ -71,7 +71,6 @@ private enum class PortalTab(val title: Int, val icon: Int) {
     TODAY(R.string.tab_today, R.drawable.nav_today),
     COURSES(R.string.courses_title, R.drawable.nav_courses),
     CALENDAR(R.string.tab_calendar, R.drawable.nav_calendar),
-    GRADES(R.string.tab_grades, R.drawable.nav_grades),
     MESSAGES(R.string.tab_messages, R.drawable.nav_messages),
 }
 
@@ -265,7 +264,7 @@ fun PortalApp() {
                         onLoad = { model.refresh(force = true) }, onOpen = contentModel::openCourse)
                     PortalTab.TODAY, PortalTab.CALENDAR -> AgendaContent(state, calendar = tab == PortalTab.CALENDAR,
                         enabled = !signingOut, onRefresh = { model.refresh(force = true) })
-                    PortalTab.GRADES, PortalTab.MESSAGES -> Card(Modifier.fillMaxWidth()) {
+                    PortalTab.MESSAGES -> Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(stringResource(tab.title), style = MaterialTheme.typography.titleLarge)
                             Text(stringResource(R.string.coming_soon))

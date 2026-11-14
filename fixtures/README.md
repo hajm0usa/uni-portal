@@ -19,6 +19,6 @@ Before a response becomes a fixture:
 - `courses_empty.json`
 - `courses_expired_session.json` (error from the server)
 - `courses_login_page.html` (HTML returned instead of JSON)
-- `calendar_ok.json`, `grades_ok.html`
+- `calendar_ok.json`
 
 Every section needs at least: ok, empty, error, and "HTML instead of JSON".

@@ -47,7 +47,6 @@
     <string name="credentials_automatic_hint">ورود خودکار فقط یک بار تلاش می‌شود. اگر انجام نشد یا سامانه درخواست تأیید کرد، از همین صفحه دستی وارد شوید یا اطلاعات ورود را تغییر دهید.</string>
     <string name="tab_today">امروز</string>
     <string name="tab_calendar">تقویم</string>
-    <string name="tab_grades">نمره‌ها</string>
     <string name="tab_messages">پیام‌ها</string>
     <string name="coming_soon">این بخش هنوز آماده نیست.</string>
     <string name="agenda_preview_note">پیش‌نمایش حداکثر ۶ رویداد در بازهٔ هفت‌روزهٔ آخرین دریافت؛ این فهرست تقویم کامل نیست. رویدادهای آزمون هنوز تأیید نشده‌اند.</string>
