@@ -140,7 +140,17 @@ Doze/OEM timing, boot broadcasts, tap navigation and lock-screen behavior still 
 CI/device verification. Reminder timing is inexact and the source feed incomplete;
 force-stop prevents alarms until reopening. A corrupt cancellation ledger can
 leave harmless wakeups, but cannot bypass Room/permission checks at delivery.
-The 3-day sign-in reminder and in-app new-item badge remain unimplemented.
+A separate local "sign in again" reminder now uses the most recent successful
+Room sync timestamp across providers/sections plus three elapsed days. Failed
+refreshes do not postpone it; newer successes reset it. Delivery rechecks Room and
+notifies once per successful-sync epoch, including an overdue notice discovered
+after boot/reopen. Logout clears it. Its separate Persian channel carries no
+account/item data and opens Home without forcing login or asserting that the
+server session has expired. Permission/channel blocking is independent of deadline
+notifications. All **204 tests** pass across isolated harnesses (158 standalone,
+46 Robolectric), with isolated full-source compilation passing. APK/device timing,
+permission/channel behavior, boot delivery and tap navigation remain unverified.
+The in-app new-item badge remains unimplemented.
 
 Room version 2 adds `agenda_item` with an explicit non-destructive 1→2 migration. Room/KSP schema generation and generated Kotlin compilation pass in isolation with minimal Android API stubs; a SQLite self-check confirms migration SQL matches the generated schema and preserves old rows. Eighteen Android-backed tests need CI: six database, two ICU date, four credential-storage and six new folder-storage tests. The folder store/ViewModel and new tests compile in an isolated Android-API JVM harness, but its tests hit dependency-download and SDK-runtime-classpath failures, not a passing run. The full Android/Compose build remains blocked resolving AGP; CI must run all **139 JVM test declarations**, the Node checks and produce an APK. Actual Android migration, Keystore, SAF picker/grants/restart behavior, UI lifecycle and live calendar/content behavior are not proven by these local checks. The owner confirmed automatic sign-in works and accepted Slice 1; that confirmation does not separately prove every failure/recovery path.
 

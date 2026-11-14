@@ -13,5 +13,6 @@ internal class MemoryAgendaDao(private val courses: MemoryCourseDao) : AgendaDao
     }
     override fun syncState(providerId: String, section: String) = courses.syncState(providerId, section)
     override fun widgetSyncStates() = courses.allSyncStates()
+    override fun lastSuccessfulSync() = courses.allSyncStates().mapNotNull { it.lastSuccessEpochSeconds }.maxOrNull()
     override fun saveSyncState(state: SyncStateEntity) = courses.saveSyncState(state)
 }

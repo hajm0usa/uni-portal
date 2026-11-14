@@ -24,12 +24,18 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 private const val DEADLINES_CHANNEL = "deadlines"
+private const val SESSION_CHANNEL = "session"
+private const val SESSION_NOTIFICATION_TAG = "session"
+private const val SESSION_NOTIFIED_EPOCH = "session_notified_epoch"
 
-internal fun reminderNotificationsEnabled(context: Context): Boolean {
+internal fun reminderNotificationsEnabled(context: Context, channelId: String = DEADLINES_CHANNEL): Boolean {
     val manager = context.getSystemService(NotificationManager::class.java)
     return (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) &&
-        manager.areNotificationsEnabled() && manager.getNotificationChannel(DEADLINES_CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE
+        manager.areNotificationsEnabled() && manager.getNotificationChannel(channelId)?.importance != NotificationManager.IMPORTANCE_NONE
 }
+
+internal fun allReminderNotificationsEnabled(context: Context): Boolean =
+    reminderNotificationsEnabled(context) && reminderNotificationsEnabled(context, SESSION_CHANNEL)
 
 internal class ReminderScheduler(
     private val context: Context,
@@ -43,7 +49,7 @@ internal class ReminderScheduler(
     suspend fun reschedule(force: Boolean = false) = withContext(Dispatchers.IO) {
         safely {
             lock.withLock {
-                createChannel()
+                createChannels()
                 val now = clock.instant().epochSecond
                 val current = if (reminderNotificationsEnabled(context)) reminderPlan(database.agendaDao().readWidgetAgenda(), now) else emptyList()
                 val previous = readScheduled()
@@ -63,6 +69,7 @@ internal class ReminderScheduler(
                 }
                 // Keep elapsed offsets until the event expires so changed/deleted items also clear delivered notifications.
                 check(preferences.edit().putString("scheduled", json.encodeToString(current)).commit())
+                reconcileSession(now)
             }
         }
     }
@@ -71,7 +78,7 @@ internal class ReminderScheduler(
         safely {
             lock.withLock {
                 SyncCoordinator.lockFor(spec.providerId).withLock provider@{
-                    createChannel()
+                    createChannels()
                     if (!reminderNotificationsEnabled(context)) return@provider
                     val item = reminderItem(database.agendaDao().readWidgetAgenda(), spec, clock.instant().epochSecond) ?: return@provider
                     val open = PendingIntent.getActivity(context, 0, reminderOpenIntent(context, spec),
@@ -92,10 +99,71 @@ internal class ReminderScheduler(
         }
     }
 
-    private fun createChannel() {
+    suspend fun deliverSession(lastSuccess: Long) = withContext(Dispatchers.IO) {
+        safely {
+            lock.withLock {
+                createChannels()
+                postSessionReminder(lastSuccess, clock.instant().epochSecond)
+            }
+        }
+    }
+
+    private fun reconcileSession(now: Long) {
+        val lastSuccess = database.agendaDao().lastSuccessfulSync()
+        val due = sessionReminderEpoch(lastSuccess)
+        val allowed = reminderNotificationsEnabled(context, SESSION_CHANNEL)
+        val active = notifications.activeNotifications.firstOrNull { it.tag == SESSION_NOTIFICATION_TAG }
+        if (lastSuccess == null || due == null || !allowed || active?.notification?.`when` != lastSuccess * 1000) {
+            notifications.cancel(SESSION_NOTIFICATION_TAG, 0)
+        }
+        sessionIntent(lastSuccess ?: 0, PendingIntent.FLAG_NO_CREATE)?.let { alarms.cancel(it) }
+        if (due == null || !allowed) {
+            if (lastSuccess == null && preferences.contains(SESSION_NOTIFIED_EPOCH)) {
+                check(preferences.edit().remove(SESSION_NOTIFIED_EPOCH).commit())
+            }
+            return
+        }
+        if (preferences.getLong(SESSION_NOTIFIED_EPOCH, -1) == lastSuccess) return
+        if (due > now) {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, due * 1000,
+                requireNotNull(sessionIntent(requireNotNull(lastSuccess), PendingIntent.FLAG_UPDATE_CURRENT)))
+        } else {
+            // Boot/reopen can discover an overdue alarm; notify once for this successful-sync epoch.
+            postSessionReminder(requireNotNull(lastSuccess), now)
+        }
+    }
+
+    private fun postSessionReminder(expectedSuccess: Long, now: Long) {
+        database.runInTransaction {
+            val latest = database.agendaDao().lastSuccessfulSync()
+            val due = sessionReminderEpoch(latest) ?: return@runInTransaction
+            if (latest != expectedSuccess || now < due || !reminderNotificationsEnabled(context, SESSION_CHANNEL) ||
+                preferences.getLong(SESSION_NOTIFIED_EPOCH, -1) == latest) return@runInTransaction
+            val open = PendingIntent.getActivity(context, 0, sessionOpenIntent(context),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val notification = Notification.Builder(context, SESSION_CHANNEL)
+                .setSmallIcon(R.drawable.home_clock).setContentTitle(context.getString(R.string.session_reminder_title))
+                .setContentText(context.getString(R.string.session_reminder_body))
+                .setStyle(Notification.BigTextStyle().bigText(context.getString(R.string.session_reminder_body)))
+                .setWhen(expectedSuccess * 1000).setShowWhen(false).setContentIntent(open)
+                .setAutoCancel(true).setOnlyAlertOnce(true).setVisibility(Notification.VISIBILITY_PRIVATE).build()
+            notifications.notify(SESSION_NOTIFICATION_TAG, 0, notification)
+            check(preferences.edit().putLong(SESSION_NOTIFIED_EPOCH, expectedSuccess).commit())
+        }
+    }
+
+    private fun sessionIntent(lastSuccess: Long, flags: Int): PendingIntent? = PendingIntent.getBroadcast(context,
+        0, sessionAlarmIntent(context, lastSuccess), flags or PendingIntent.FLAG_IMMUTABLE)
+
+    private fun createChannels() {
         notifications.createNotificationChannel(NotificationChannel(DEADLINES_CHANNEL,
             context.getString(R.string.reminder_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = context.getString(R.string.reminder_channel_description)
+            lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+        })
+        notifications.createNotificationChannel(NotificationChannel(SESSION_CHANNEL,
+            context.getString(R.string.session_reminder_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = context.getString(R.string.session_reminder_channel_description)
             lockscreenVisibility = Notification.VISIBILITY_PRIVATE
         })
     }

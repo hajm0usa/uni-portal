@@ -34,7 +34,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import ir.hajmousa.uniportal.R
 import ir.hajmousa.uniportal.core.AppLog
 import ir.hajmousa.uniportal.notify.ReminderScheduler
-import ir.hajmousa.uniportal.notify.reminderNotificationsEnabled
+import ir.hajmousa.uniportal.notify.allReminderNotificationsEnabled
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 
@@ -44,17 +44,17 @@ internal fun ReminderPermissionCard() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var enabled by remember { mutableStateOf(reminderNotificationsEnabled(context)) }
+    var enabled by remember { mutableStateOf(allReminderNotificationsEnabled(context)) }
     var requested by rememberSaveable { mutableStateOf(false) }
     var settingsFailed by remember { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         requested = true
-        enabled = reminderNotificationsEnabled(context)
+        enabled = allReminderNotificationsEnabled(context)
         scope.launch { ReminderScheduler(context.applicationContext).reschedule(force = true) }
     }
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            enabled = reminderNotificationsEnabled(context)
+            enabled = allReminderNotificationsEnabled(context)
             awaitCancellation()
         }
     }
@@ -74,7 +74,9 @@ internal fun ReminderPermissionCard() {
                         AppLog.record(AppLog.Event.REMINDER_FAILED)
                     }
                 }
-            }) { Text(stringResource(if (requested || Build.VERSION.SDK_INT < 33) R.string.reminder_settings else R.string.reminder_enable)) }
+            }) { Text(stringResource(if (requested || Build.VERSION.SDK_INT < 33 ||
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+                R.string.reminder_settings else R.string.reminder_enable)) }
         }
     }
 }

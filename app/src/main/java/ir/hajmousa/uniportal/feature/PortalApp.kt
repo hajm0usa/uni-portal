@@ -3,6 +3,7 @@ package ir.hajmousa.uniportal.feature
 import android.content.Intent
 import ir.hajmousa.uniportal.notify.reminderTarget
 import ir.hajmousa.uniportal.notify.ReminderScheduler
+import ir.hajmousa.uniportal.notify.isSessionReminderIntent
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
@@ -107,6 +108,10 @@ fun PortalApp(reminderIntent: Intent? = null) {
             contentModel.close()
             showLogs = false
             tab = PortalTab.CALENDAR
+        } else if (isSessionReminderIntent(reminderIntent)) {
+            contentModel.close()
+            showLogs = false
+            tab = PortalTab.TODAY
         }
     }
     val state by model.state.collectAsStateWithLifecycle()

@@ -31,6 +31,9 @@ abstract class AgendaDao {
     @Query("SELECT * FROM sync_state ORDER BY providerId, section")
     abstract fun widgetSyncStates(): List<SyncStateEntity>
 
+    @Query("SELECT MAX(lastSuccessEpochSeconds) FROM sync_state")
+    abstract fun lastSuccessfulSync(): Long?
+
     @Transaction
     open fun readWidgetAgenda(): WidgetAgendaCache {
         val states = widgetSyncStates()

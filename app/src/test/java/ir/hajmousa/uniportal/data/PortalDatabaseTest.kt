@@ -260,4 +260,20 @@ class PortalDatabaseTest {
             updates.close()
         }
     }
+
+    @Test
+    fun `last successful sync spans providers and sections but ignores later failed refreshes`() {
+        assertNull(db.agendaDao().lastSuccessfulSync())
+        db.courseDao().replacePage("moodle", listOf(old), 100)
+        db.agendaDao().replacePreview("moodle", emptyList(), 200)
+        db.agendaDao().recordFailure("moodle", Reason.NETWORK_ERROR)
+        assertEquals(200L, db.agendaDao().lastSuccessfulSync())
+        db.courseContentDao().replaceSections("moodle", "1", emptyList(), 300)
+        assertEquals(300L, db.agendaDao().lastSuccessfulSync())
+        db.agendaDao().replacePreview("other", emptyList(), 400)
+        db.courseDao().clearPage("moodle")
+        assertEquals(400L, db.agendaDao().lastSuccessfulSync())
+        db.courseDao().clearPage("other")
+        assertNull(db.agendaDao().lastSuccessfulSync())
+    }
 }

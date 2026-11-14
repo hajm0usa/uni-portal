@@ -3,6 +3,7 @@ package ir.hajmousa.uniportal.notify
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.NotificationChannel
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.res.Resources
@@ -36,6 +37,12 @@ class ReminderSchedulerTest {
     private val spec get() = ReminderSpec(item.providerId, item.remoteId, item.startEpoch, 86400)
     private val alarms get() = context.getSystemService(AlarmManager::class.java)
     private val notifications get() = context.getSystemService(NotificationManager::class.java)
+    private val deadlineAlarms get() = shadowOf(alarms).scheduledAlarms.filter {
+        shadowOf(requireNotNull(it.operation)).savedIntent.action == REMINDER_ACTION
+    }
+    private val sessionAlarms get() = shadowOf(alarms).scheduledAlarms.filter {
+        shadowOf(requireNotNull(it.operation)).savedIntent.action == SESSION_REMINDER_ACTION
+    }
 
     private fun scheduler(at: Long = now) = ReminderScheduler(context,
         Clock.fixed(Instant.ofEpochSecond(at), ZoneOffset.UTC), db)
@@ -48,7 +55,9 @@ class ReminderSchedulerTest {
             private val strings = object : Resources(app.assets, app.resources.displayMetrics, app.resources.configuration) {
                 override fun getText(id: Int): CharSequence = when (id) {
                     R.string.reminder_channel, R.string.reminder_channel_description, R.string.reminder_public,
-                    R.string.reminder_cached_note, R.string.app_name -> "Synthetic notification label"
+                    R.string.reminder_cached_note, R.string.app_name, R.string.session_reminder_channel,
+                    R.string.session_reminder_channel_description, R.string.session_reminder_title,
+                    R.string.session_reminder_body -> "Synthetic notification label"
                     else -> super.getText(id)
                 }
             }
@@ -68,12 +77,12 @@ class ReminderSchedulerTest {
     @Test
     fun `platform schedules two idle-allowed RTC alarms and unchanged recomputation does not duplicate them`() = runBlocking {
         scheduler().reschedule()
-        val scheduled = shadowOf(alarms).scheduledAlarms
+        val scheduled = deadlineAlarms
         assertEquals(2, scheduled.size)
         assertEquals(listOf(item.startEpoch - 86400, item.startEpoch - 10800), scheduled.map { it.triggerAtTime / 1000 })
         assertTrue(scheduled.all { it.type == AlarmManager.RTC_WAKEUP && it.isAllowWhileIdle })
         scheduler().reschedule()
-        assertEquals(2, shadowOf(alarms).scheduledAlarms.size)
+        assertEquals(2, deadlineAlarms.size)
     }
 
     @Test
@@ -83,7 +92,7 @@ class ReminderSchedulerTest {
         db.agendaDao().replacePreview("moodle", listOf(changed), now + 1)
         scheduler().reschedule()
         assertEquals(listOf(changed.startEpoch - 86400, changed.startEpoch - 10800),
-            shadowOf(alarms).scheduledAlarms.map { it.triggerAtTime / 1000 })
+            deadlineAlarms.map { it.triggerAtTime / 1000 })
         db.courseDao().clearPage("moodle")
         scheduler().reschedule()
         assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
@@ -118,7 +127,7 @@ class ReminderSchedulerTest {
         scheduler().reschedule()
         shadowOf(alarms).scheduledAlarms.toList().forEach { alarms.cancel(requireNotNull(it.operation)) }
         scheduler().reschedule(force = true)
-        assertEquals(2, shadowOf(alarms).scheduledAlarms.size)
+        assertEquals(2, deadlineAlarms.size)
     }
 
     @Test
@@ -142,7 +151,7 @@ class ReminderSchedulerTest {
         assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
         shadowOf(notifications).setNotificationsEnabled(true)
         scheduler().reschedule()
-        assertEquals(2, shadowOf(alarms).scheduledAlarms.size)
+        assertEquals(2, deadlineAlarms.size)
     }
 
     @Test
@@ -153,7 +162,99 @@ class ReminderSchedulerTest {
         db.agendaDao().replacePreview("moodle", listOf(item.copy(remoteId = "Aa"), item.copy(remoteId = "BB")), now)
         db.agendaDao().replacePreview("other", listOf(item.copy(providerId = "other", remoteId = "Aa")), now)
         scheduler().reschedule()
-        assertEquals(6, shadowOf(alarms).scheduledAlarms.size)
-        assertEquals(6, shadowOf(alarms).scheduledAlarms.map { it.operation }.distinct().size)
+        assertEquals(6, deadlineAlarms.size)
+        assertEquals(6, deadlineAlarms.map { it.operation }.distinct().size)
+    }
+
+    @Test
+    fun `successful sync postpones the single three-day alarm but failed refresh does not`() = runBlocking {
+        scheduler().reschedule()
+        assertEquals((now + SESSION_REMINDER_DELAY) * 1000, sessionAlarms.single().triggerAtTime)
+        db.courseDao().replacePage("moodle", emptyList(), now + 3600)
+        scheduler(now + 3600).reschedule()
+        assertEquals((now + 3600 + SESSION_REMINDER_DELAY) * 1000, sessionAlarms.single().triggerAtTime)
+        db.agendaDao().recordFailure("moodle", ir.hajmousa.uniportal.core.PortalException.Reason.NETWORK_ERROR)
+        scheduler(now + 7200).reschedule()
+        assertEquals((now + 3600 + SESSION_REMINDER_DELAY) * 1000, sessionAlarms.single().triggerAtTime)
+    }
+
+    @Test
+    fun `session reminder cannot fire early and notifies once per successful sync with no account or item data`() = runBlocking {
+        val due = now + SESSION_REMINDER_DELAY
+        scheduler(due - 1).deliverSession(now)
+        assertTrue(notifications.activeNotifications.isEmpty())
+        scheduler(due).deliverSession(now)
+        val notification = notifications.activeNotifications.single().notification
+        assertEquals("session", notification.channelId)
+        assertEquals("Synthetic notification label", notification.extras.getString(Notification.EXTRA_TEXT))
+        assertFalse(notification.extras.toString().contains(item.title))
+        assertFalse(notification.extras.toString().contains(item.providerId))
+        assertTrue(isSessionReminderIntent(shadowOf(requireNotNull(notification.contentIntent)).savedIntent))
+        notifications.cancelAll()
+        scheduler(due + 1).deliverSession(now)
+        scheduler(due + 1).reschedule(force = true)
+        assertTrue(notifications.activeNotifications.isEmpty())
+        assertTrue(sessionAlarms.isEmpty())
+    }
+
+    @Test
+    fun `newer sync and logout invalidate queued session alarms`() = runBlocking {
+        val due = now + SESSION_REMINDER_DELAY
+        db.courseDao().replacePage("moodle", emptyList(), now + 1)
+        scheduler(due).deliverSession(now)
+        assertTrue(notifications.activeNotifications.isEmpty())
+        scheduler(due + 1).deliverSession(now + 1)
+        assertEquals(1, notifications.activeNotifications.size)
+        db.courseDao().clearPage("moodle")
+        scheduler(due + 2).reschedule()
+        scheduler(due + 2).deliverSession(now + 1)
+        assertTrue(notifications.activeNotifications.isEmpty())
+        assertTrue(sessionAlarms.isEmpty())
+    }
+
+    @Test
+    fun `a later successful sync removes the old session notification and arms the new three-day interval`() = runBlocking {
+        val due = now + SESSION_REMINDER_DELAY
+        scheduler(due).deliverSession(now)
+        db.courseDao().replacePage("moodle", emptyList(), due + 1)
+        scheduler(due + 1).reschedule()
+        assertTrue(notifications.activeNotifications.isEmpty())
+        assertEquals((due + 1 + SESSION_REMINDER_DELAY) * 1000, sessionAlarms.single().triggerAtTime)
+    }
+
+    @Test
+    fun `boot-style restore handles an overdue session once without a repeating past alarm`() = runBlocking {
+        val late = now + SESSION_REMINDER_DELAY + 3600
+        scheduler(late).reschedule(force = true)
+        assertEquals(1, notifications.activeNotifications.size)
+        assertTrue(sessionAlarms.isEmpty())
+        notifications.cancelAll()
+        scheduler(late).reschedule(force = true)
+        assertTrue(notifications.activeNotifications.isEmpty())
+        assertTrue(sessionAlarms.isEmpty())
+    }
+
+    @Test
+    fun `blocked session channel does not suppress deadline alarms`() = runBlocking {
+        notifications.createNotificationChannel(NotificationChannel("session", "Synthetic blocked channel", NotificationManager.IMPORTANCE_NONE))
+        scheduler().reschedule()
+        assertEquals(2, deadlineAlarms.size)
+        assertTrue(sessionAlarms.isEmpty())
+        assertTrue(reminderNotificationsEnabled(context))
+        assertFalse(allReminderNotificationsEnabled(context))
+        scheduler(now + SESSION_REMINDER_DELAY).deliverSession(now)
+        assertTrue(notifications.activeNotifications.isEmpty())
+    }
+
+    @Test
+    fun `permission grant can deliver an overdue session notice but denial cannot mark it delivered`() = runBlocking {
+        val due = now + SESSION_REMINDER_DELAY
+        shadowOf(notifications).setNotificationsEnabled(false)
+        scheduler(due).reschedule()
+        scheduler(due).deliverSession(now)
+        assertTrue(notifications.activeNotifications.isEmpty())
+        shadowOf(notifications).setNotificationsEnabled(true)
+        scheduler(due).reschedule(force = true)
+        assertEquals(1, notifications.activeNotifications.size)
     }
 }

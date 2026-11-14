@@ -46,4 +46,28 @@ class ReminderIntentsTest {
         assertNull(reminderTarget(Intent(open).setData(open.data!!.buildUpon().appendQueryParameter("token", "XXXX").build())))
         assertNull(reminderTarget(Intent(open).setAction(Intent.ACTION_MAIN)))
     }
+
+    @Test
+    fun `session alarm has a fixed private identity and validates the expected successful-sync epoch`() {
+        val intent = sessionAlarmIntent(context, 1700000000)
+        assertEquals(1700000000L, sessionAlarmEpoch(intent))
+        assertEquals(intent.data, sessionAlarmIntent(context, 1700000001).data)
+        assertEquals(setOf("last_success_epoch"), intent.extras!!.keySet())
+        assertNull(sessionAlarmEpoch(Intent(intent).apply { removeExtra("last_success_epoch") }))
+        assertNull(sessionAlarmEpoch(sessionAlarmIntent(context, -1)))
+        assertNull(sessionAlarmEpoch(sessionAlarmIntent(context, Long.MAX_VALUE)))
+        assertNull(sessionAlarmEpoch(Intent(intent).setAction(REMINDER_ACTION)))
+        assertNull(sessionAlarmEpoch(Intent(intent).setData(intent.data!!.buildUpon().appendQueryParameter("token", "XXXX").build())))
+    }
+
+    @Test
+    fun `session notification opens Home without forcing login or carrying account data`() {
+        val intent = sessionOpenIntent(context)
+        assertTrue(isSessionReminderIntent(intent))
+        assertNull(reminderTarget(intent))
+        assertNull(intent.extras)
+        assertNotNull(intent.component)
+        assertFalse(isSessionReminderIntent(reminderOpenIntent(context, spec)))
+        assertFalse(isSessionReminderIntent(Intent(intent).setData(Uri.parse("https://example.invalid/"))))
+    }
 }
