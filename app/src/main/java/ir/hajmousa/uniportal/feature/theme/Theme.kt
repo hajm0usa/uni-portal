@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import ir.hajmousa.uniportal.R
 
-private val LightColors = lightColorScheme(
+internal val LightColors = lightColorScheme(
     primary = Color(0xFF006A60),
     onPrimary = Color.White,
     primaryContainer = Color(0xFF9EF2E3),
@@ -52,7 +52,7 @@ private val LightColors = lightColorScheme(
     surfaceContainerHighest = Color(0xFFDEE4E0),
 )
 
-private val DarkColors = darkColorScheme(
+internal val DarkColors = darkColorScheme(
     primary = Color(0xFF82D5C7),
     onPrimary = Color(0xFF003730),
     primaryContainer = Color(0xFF005047),

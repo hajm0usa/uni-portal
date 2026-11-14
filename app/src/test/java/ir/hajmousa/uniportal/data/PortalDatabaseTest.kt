@@ -2,6 +2,13 @@ package ir.hajmousa.uniportal.data
 
 import androidx.room.Room
 import ir.hajmousa.uniportal.core.PortalException.Reason
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -213,5 +220,44 @@ class PortalDatabaseTest {
         assertNull(db.courseContentDao().readSections("moodle", "1"))
         db.courseContentDao().replaceSections("moodle", "1", emptyList(), 789)
         assertEquals(CachedContent<CourseSection>(emptyList(), 789), db.courseContentDao().readSections("moodle", "1"))
+    }
+
+    @Test
+    fun `widget transaction includes shared expiry and forgets cleared provider data`() {
+        val item = AgendaItem("moodle", "1", "Sample deadline", 1700006400, AgendaItem.Kind.DEADLINE)
+        db.agendaDao().replacePreview("moodle", listOf(item), 100)
+        db.agendaDao().replacePreview("other", emptyList(), 200)
+        db.courseContentDao().recordFailure("moodle", CourseContentDao.sectionsKey("1"), Reason.SESSION_EXPIRED)
+        assertEquals(WidgetAgendaCache(listOf(item), 100, needsLogin = true), db.agendaDao().readWidgetAgenda())
+        db.courseDao().clearPage("moodle")
+        assertEquals(WidgetAgendaCache(lastSuccessEpochSeconds = 200), db.agendaDao().readWidgetAgenda())
+        db.courseDao().clearPage("other")
+        assertEquals(WidgetAgendaCache(), db.agendaDao().readWidgetAgenda())
+    }
+
+    @Test
+    fun `widget Room invalidations publish sync expiry and account clearing without a network source`() = runBlocking {
+        val updates = Channel<WidgetAgendaCache>(Channel.UNLIMITED)
+        val observer = launch(Dispatchers.IO) {
+            db.invalidationTracker.createFlow("agenda_item", "sync_state").collect {
+                updates.send(db.agendaDao().readWidgetAgenda())
+            }
+        }
+        suspend fun awaitState(expected: WidgetAgendaCache) = withTimeout(10000) {
+            while (updates.receive() != expected) { }
+        }
+        try {
+            awaitState(WidgetAgendaCache())
+            val item = AgendaItem("moodle", "1", "Sample deadline", 1700006400, AgendaItem.Kind.DEADLINE)
+            db.agendaDao().replacePreview("moodle", listOf(item), 100)
+            awaitState(WidgetAgendaCache(listOf(item), 100))
+            db.courseDao().recordFailure("moodle", Reason.SESSION_EXPIRED)
+            awaitState(WidgetAgendaCache(listOf(item), 100, needsLogin = true))
+            db.courseDao().clearPage("moodle")
+            awaitState(WidgetAgendaCache())
+        } finally {
+            observer.cancelAndJoin()
+            updates.close()
+        }
     }
 }

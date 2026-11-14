@@ -8,6 +8,10 @@ internal class MemoryCourseDao : CourseDao() {
     var failStorage = false
 
     private fun checkStorage() { check(!failStorage) { "private-example-input" } }
+    fun allSyncStates(): List<SyncStateEntity> {
+        checkStorage()
+        return states.values.sortedWith(compareBy({ it.providerId }, { it.section }))
+    }
     override fun courses(providerId: String): List<CourseEntity> {
         checkStorage()
         return rows.filter { it.providerId == providerId }.sortedBy { it.position }

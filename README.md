@@ -115,6 +115,18 @@ This is not exhaustive hardware Keystore, storage-provider or migration-path tes
 
 Folder detail screens also offer a persistent SAF download-folder picker with Persian Android 11+ restriction guidance. The tree URI is stored in DataStore after verifying persisted read/write access and directory create support; access is rechecked on resume. Missing/revoked/unwritable folders prompt selection again. Cancelling or failing a new selection preserves the existing choice. This prepares storage only: no file download/open action is enabled yet. DataStore Preferences 1.3.0 was checked against the official AndroidX stable release page before addition.
 
+Slice 5 starts with a Glance home-screen widget for future cached deadlines/exams.
+It reads Room only, shows Jalali dates and cache/session/error status, and opens
+the app for refresh or login. Room invalidations update the widget after sync and
+account clearing; platform widget updates never make network requests. Its
+scrollable list is explicitly an incomplete cached preview, not a complete feed.
+Glance 1.2.0 uses dynamic colors on Android 12+ and the app's teal palette below;
+text uses platform Persian font support in an RTL container. All **170 tests**
+pass across the isolated harnesses (145 standalone, 25 Robolectric), including
+widget filtering, provider isolation, expiry and live Room clearing. Kotlin/Glance
+compilation passes; the new widget's APK, launcher rendering and device lifecycle
+remain unverified. Notifications/reminders are not implemented yet.
+
 Room version 2 adds `agenda_item` with an explicit non-destructive 1→2 migration. Room/KSP schema generation and generated Kotlin compilation pass in isolation with minimal Android API stubs; a SQLite self-check confirms migration SQL matches the generated schema and preserves old rows. Eighteen Android-backed tests need CI: six database, two ICU date, four credential-storage and six new folder-storage tests. The folder store/ViewModel and new tests compile in an isolated Android-API JVM harness, but its tests hit dependency-download and SDK-runtime-classpath failures, not a passing run. The full Android/Compose build remains blocked resolving AGP; CI must run all **139 JVM test declarations**, the Node checks and produce an APK. Actual Android migration, Keystore, SAF picker/grants/restart behavior, UI lifecycle and live calendar/content behavior are not proven by these local checks. The owner confirmed automatic sign-in works and accepted Slice 1; that confirmation does not separately prove every failure/recovery path.
 
 The owner confirms Slice 0, successful in-app SSO login and real course names appearing in the native list before the cache/provider increments. On-device offline caching/clearing was explicitly skipped, not verified. Cookie reuse across restart, session-expiry/re-login, pagination completeness and release signing also remain unverified. Site facts in `docs/DISCOVERY.md` come from owner observations/sanitized responses; local tests alone do not establish live-site behavior.

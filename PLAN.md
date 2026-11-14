@@ -137,7 +137,14 @@ The owner explicitly excluded Grades from the app on 2026-11-14 (decision #29), 
 
 ## Slice 5 — Widget and reminders
 
+Owner explicitly authorized Slice 5 on 2026-11-14, starting with the Room-only upcoming-deadlines widget. Grades is excluded; Slice 3 downloads/open/share remain deferred, not complete. Reminders are not implemented by this first widget step.
+
 - [ ] [agent] Glance widget "upcoming deadlines", reads Room only, shows "last updated" and a button that opens the app.
+   - [x] Persian home-screen widget displays future DEADLINE/EXAM items from a transactionally read, provider-scoped Room snapshot, ordered by epoch without merging same-title items or imposing another feed count cap. Scrollable list, Jalali timestamps, last-success time, empty/not-loaded/stale/refresh-error/NeedsLogin/storage-error guidance, and explicit app-open button. The cached-preview notice remains truthful about the six-event server source; unknown event types are not promoted to exams/deadlines.
+   - [x] Application-level Room invalidation observer requests Glance updates after agenda/sync metadata writes, including account clearing and detail-session expiry. Active widget compositions observe the same Room tables. The platform's 30-minute widget update reads Room only; no network client, login, polling, alarm or notification permission is added. No Room schema change or separate widget-title cache. Receiver is non-exported and home-screen-only.
+   - [x] Glance appwidget/material3 1.2.0 was checked against the official AndroidX stable release page before addition; versions are in the catalog. Reuses the app's fixed teal light/dark palette below API 31 and Glance dynamic colors above it. RTL RemoteViews container and Persian resource strings; Glance text uses the platform font because its Text API does not load bundled font resources.
+   - [x] Eight new pure tests and two Android-backed Room tests cover deadline filtering/sorting, provider identity, empty/fresh/stale/error states, saved expiry, transactional clearing and live invalidations. All 145 standalone JVM and 25 Robolectric tests pass (170 total); full Kotlin/Compose/Glance source compilation passes in the isolated harness.
+   - [ ] CI debug APK and device verification: widget picker, add/resize/scroll, Persian shaping/RTL/light-dark/dynamic colors/large text, app-open action, offline/restart behavior, sync/expiry updates, and removal of cached titles after logout. Isolated harnesses do not verify Android resource linking, manifest merge, packaging, launcher rendering or WorkManager execution. No new widget APK has been verified yet.
 - [ ] [agent] Reminders (24 h and 3 h before deadlines/exams) from Room with `setAndAllowWhileIdle`; reschedule after each successful sync and on boot; POST_NOTIFICATIONS permission flow.
 - [ ] [agent] Local "sign in again" alarm (~3 days after the last successful sync).
 - [ ] [agent] "New items" badge on app open.

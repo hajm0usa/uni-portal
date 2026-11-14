@@ -28,6 +28,24 @@ abstract class AgendaDao {
     @Query("SELECT * FROM sync_state WHERE providerId = :providerId AND section = :section")
     abstract fun syncState(providerId: String, section: String): SyncStateEntity?
 
+    @Query("SELECT * FROM sync_state ORDER BY providerId, section")
+    abstract fun widgetSyncStates(): List<SyncStateEntity>
+
+    @Transaction
+    open fun readWidgetAgenda(): WidgetAgendaCache {
+        val states = widgetSyncStates()
+        val previews = states.filter { it.section == SECTION }.mapNotNull { readPreview(it.providerId) }
+        return WidgetAgendaCache(
+            items = previews.flatMap { it.items },
+            lastSuccessEpochSeconds = previews.minOfOrNull { it.lastSuccessEpochSeconds },
+            needsLogin = states.any { it.lastError == PortalException.Reason.SESSION_EXPIRED.name },
+            error = previews.firstNotNullOfOrNull { it.lastError }
+                ?: states.firstOrNull { it.section == SECTION && it.lastError != null }?.let { state ->
+                    PortalException.Reason.entries.firstOrNull { it.name == state.lastError }
+                },
+        )
+    }
+
     @Query("DELETE FROM agenda_item WHERE providerId = :providerId")
     abstract fun deleteItems(providerId: String)
 

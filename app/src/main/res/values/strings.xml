@@ -98,4 +98,13 @@
     <string name="home_empty">رویدادی در پیش‌نمایش ذخیره‌شده نیست</string>
     <string name="home_empty_hint">برای بررسی سایر فعالیت‌ها، به درس‌ها سر بزنید.</string>
     <string name="home_agenda_scope">رویدادهای بازهٔ هفت‌روزهٔ آخرین دریافت؛ این فهرست هنوز کامل نیست.</string>
+    <string name="widget_title">مهلت‌های پیش رو</string>
+    <string name="widget_description">پیش‌نمایش مهلت‌ها از داده‌های ذخیره‌شده، بدون اتصال به سامانه</string>
+    <string name="widget_placeholder">برای نمایش مهلت‌های ذخیره‌شده، پرتال دانشگاه را باز کنید.</string>
+    <string name="widget_open_app">باز کردن پرتال دانشگاه</string>
+    <string name="widget_empty">در پیش‌نمایش ذخیره‌شده مهلت آینده‌ای وجود ندارد.</string>
+    <string name="widget_stale">اطلاعات ذخیره‌شده ممکن است قدیمی باشد؛ برای تازه‌سازی برنامه را باز کنید.</string>
+    <string name="widget_refresh_failed">آخرین دریافت ناموفق بود؛ برای تلاش دوباره برنامه را باز کنید.</string>
+    <string name="widget_preview_note">این پیش‌نمایش ذخیره‌شده ممکن است شامل همهٔ رویدادها نباشد.</string>
+    <string name="log_widget_update_failed">به‌روزرسانی ابزارک ناموفق بود</string>
 </resources>
