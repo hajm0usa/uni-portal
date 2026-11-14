@@ -1,5 +1,9 @@
 package ir.hajmousa.uniportal.feature
 
+import android.content.Intent
+import ir.hajmousa.uniportal.notify.reminderTarget
+import ir.hajmousa.uniportal.notify.ReminderScheduler
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -76,7 +80,7 @@ private enum class PortalTab(val title: Int, val icon: Int) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PortalApp() {
+fun PortalApp(reminderIntent: Intent? = null) {
     var showLogs by rememberSaveable { mutableStateOf(false) }
     var showLogin by rememberSaveable { mutableStateOf(false) }
     var signedIn by rememberSaveable { mutableStateOf(false) }
@@ -97,6 +101,14 @@ fun PortalApp() {
         ))
     }
     val contentModel = viewModel<CourseContentViewModel> { CourseContentViewModel(model.repositories.content) }
+    val notificationTarget = reminderTarget(reminderIntent)
+    LaunchedEffect(reminderIntent) {
+        if (notificationTarget != null) {
+            contentModel.close()
+            showLogs = false
+            tab = PortalTab.CALENDAR
+        }
+    }
     val state by model.state.collectAsStateWithLifecycle()
     val contentState by contentModel.state.collectAsStateWithLifecycle()
     val inContent = contentState.course != null
@@ -108,6 +120,12 @@ fun PortalApp() {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lifecycleState by lifecycle.currentStateFlow.collectAsState()
     val foreground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            ReminderScheduler(context.applicationContext).reschedule(force = true)
+            awaitCancellation()
+        }
+    }
     val openLogin: () -> Unit = {
         automaticLoginUsed = true
         contentModel.close()
@@ -263,7 +281,7 @@ fun PortalApp() {
                     PortalTab.COURSES -> CoursesContent(coursesState, enabled = !signingOut,
                         onLoad = { model.refresh(force = true) }, onOpen = contentModel::openCourse)
                     PortalTab.TODAY, PortalTab.CALENDAR -> AgendaContent(state, calendar = tab == PortalTab.CALENDAR,
-                        enabled = !signingOut, onRefresh = { model.refresh(force = true) })
+                        enabled = !signingOut, onRefresh = { model.refresh(force = true) }, target = notificationTarget)
                     PortalTab.MESSAGES -> Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(stringResource(tab.title), style = MaterialTheme.typography.titleLarge)
@@ -316,6 +334,7 @@ private fun LogScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
                         AppLog.Event.CONTENT_LOAD_FAILED -> R.string.log_content_load_failed
                         AppLog.Event.DOWNLOAD_FOLDER_FAILED -> R.string.log_download_folder_failed
                         AppLog.Event.WIDGET_UPDATE_FAILED -> R.string.log_widget_update_failed
+                        AppLog.Event.REMINDER_FAILED -> R.string.log_reminder_failed
                     }
                     Text(stringResource(label), style = MaterialTheme.typography.titleMedium)
                     entry.diagnostic?.let {

@@ -107,4 +107,13 @@
     <string name="widget_refresh_failed">آخرین دریافت ناموفق بود؛ برای تلاش دوباره برنامه را باز کنید.</string>
     <string name="widget_preview_note">این پیش‌نمایش ذخیره‌شده ممکن است شامل همهٔ رویدادها نباشد.</string>
     <string name="log_widget_update_failed">به‌روزرسانی ابزارک ناموفق بود</string>
+    <string name="reminder_channel">یادآوری مهلت‌ها و آزمون‌ها</string>
+    <string name="reminder_channel_description">یادآوری محلی ۲۴ ساعت و ۳ ساعت پیش از مهلت‌ها و آزمون‌های ذخیره‌شده؛ زمان نمایش ممکن است با تأخیر باشد.</string>
+    <string name="reminder_public">یادآوری یک مهلت یا آزمون ذخیره‌شده</string>
+    <string name="reminder_cached_note">بر پایهٔ پیش‌نمایش ذخیره‌شده</string>
+    <string name="reminder_permission_note">برای یادآوری محلی ۲۴ ساعت و ۳ ساعت پیش از مهلت‌ها، اعلان‌ها را فعال کنید. پیش‌نمایش ممکن است کامل نباشد؛ بدون تازه‌سازی، یادآوری‌ها هم ممکن است قدیمی باشند. زمان نمایش دقیق نیست.</string>
+    <string name="reminder_enable">فعال کردن اعلان یادآوری</string>
+    <string name="reminder_settings">تنظیمات اعلان‌ها</string>
+    <string name="reminder_settings_failed">تنظیمات اعلان‌ها باز نشد؛ آن را از تنظیمات گوشی باز کنید.</string>
+    <string name="log_reminder_failed">تنظیم یا نمایش یادآوری محلی ناموفق بود</string>
 </resources>

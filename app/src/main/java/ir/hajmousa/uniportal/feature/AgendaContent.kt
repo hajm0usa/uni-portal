@@ -1,6 +1,7 @@
 package ir.hajmousa.uniportal.feature
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,7 +31,7 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 @Composable
-internal fun AgendaContent(state: PortalState, calendar: Boolean, enabled: Boolean, onRefresh: () -> Unit) {
+internal fun AgendaContent(state: PortalState, calendar: Boolean, enabled: Boolean, onRefresh: () -> Unit, target: Pair<String, String>? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(if (calendar) R.string.tab_calendar else R.string.tab_today), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(R.string.agenda_preview_note))
@@ -67,7 +68,8 @@ internal fun AgendaContent(state: PortalState, calendar: Boolean, enabled: Boole
                 Text(if (day == today) stringResource(R.string.tab_today) else formatPersianDate(events.first().startEpoch),
                     style = MaterialTheme.typography.titleMedium)
                 events.forEach { item ->
-                    Card(Modifier.fillMaxWidth()) {
+                    Card(Modifier.fillMaxWidth(), border = if (target == (item.providerId to item.remoteId))
+                        BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(item.title, style = MaterialTheme.typography.titleMedium)
                             Text(formatPersianDateTime(item.startEpoch))

@@ -125,7 +125,22 @@ text uses platform Persian font support in an RTL container. All **170 tests**
 pass across the isolated harnesses (145 standalone, 25 Robolectric), including
 widget filtering, provider isolation, expiry and live Room clearing. Kotlin/Glance
 compilation passes; the new widget's APK, launcher rendering and device lifecycle
-remain unverified. Notifications/reminders are not implemented yet.
+remain unverified.
+
+Local deadline/exam reminders now schedule inexact, idle-allowed alarms 24 h and
+3 h before eligible cached items. Room changes reconcile changed/deleted events;
+boot, app upgrades and clock/time-zone changes restore future alarms. Delivery
+rereads Room, rejects obsolete versions, checks notification access, and shows
+title/time with a generic lock-screen public version. Tapping opens Calendar and
+highlights the matching cached item. Home offers an explicit Android 13+ permission
+request/settings path; denial cancels known alarms without blocking the app.
+All **190 tests** pass across isolated harnesses (154 standalone, 36 Robolectric),
+and full-source isolated compilation passes. The new APK, actual permission flow,
+Doze/OEM timing, boot broadcasts, tap navigation and lock-screen behavior still need
+CI/device verification. Reminder timing is inexact and the source feed incomplete;
+force-stop prevents alarms until reopening. A corrupt cancellation ledger can
+leave harmless wakeups, but cannot bypass Room/permission checks at delivery.
+The 3-day sign-in reminder and in-app new-item badge remain unimplemented.
 
 Room version 2 adds `agenda_item` with an explicit non-destructive 1→2 migration. Room/KSP schema generation and generated Kotlin compilation pass in isolation with minimal Android API stubs; a SQLite self-check confirms migration SQL matches the generated schema and preserves old rows. Eighteen Android-backed tests need CI: six database, two ICU date, four credential-storage and six new folder-storage tests. The folder store/ViewModel and new tests compile in an isolated Android-API JVM harness, but its tests hit dependency-download and SDK-runtime-classpath failures, not a passing run. The full Android/Compose build remains blocked resolving AGP; CI must run all **139 JVM test declarations**, the Node checks and produce an APK. Actual Android migration, Keystore, SAF picker/grants/restart behavior, UI lifecycle and live calendar/content behavior are not proven by these local checks. The owner confirmed automatic sign-in works and accepted Slice 1; that confirmation does not separately prove every failure/recovery path.
 

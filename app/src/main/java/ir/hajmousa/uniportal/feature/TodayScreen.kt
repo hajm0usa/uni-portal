@@ -143,6 +143,11 @@ internal fun TodayScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            if (state.agenda?.items.orEmpty().any {
+                    (it.kind == AgendaItem.Kind.DEADLINE || it.kind == AgendaItem.Kind.EXAM) && it.startEpoch - 10800 > state.nowEpoch
+                }) {
+                item(key = "reminder_permission") { ReminderPermissionCard() }
+            }
             if (credentialStorageError) item { HomeNotice(stringResource(R.string.credentials_storage_error)) }
             if (loginFailed) item { HomeNotice(stringResource(R.string.login_failed)) }
             if (state.needsLogin || (!signedIn && !busy && state.agenda == null)) item {
